@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0f1724">
+<title>Skor Panahan</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="bar">
+  <button id="btnBack" class="ic" aria-label="Kembali" hidden>‹</button>
+  <div class="ttl"><div id="hTitle">Skor Panahan</div><div id="hSub" class="mut"></div></div>
+  <div id="sync" class="sync" title="Status kirim">●</div>
+</header>
+
+<!-- 1. PENGATURAN -->
+<section id="vSetup" class="view">
+  <div class="card">
+    <h2>Hubungkan ke Spreadsheet</h2>
+    <label>URL Web App (dari Apps Script)
+      <input id="iApi" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+    </label>
+    <label>PIN petugas <input id="iPin" type="password" inputmode="numeric" placeholder="1234"></label>
+    <label>Nama perangkat <input id="iDev" placeholder="HP Bantalan 1"></label>
+    <button id="btnSimpanSetup" class="btn pri">Simpan & Masuk</button>
+    <p id="setupMsg" class="mut"></p>
+  </div>
+</section>
+
+<!-- 2. PILIH BANTALAN -->
+<section id="vTargets" class="view" hidden>
+  <p class="mut pad">Pilih bantalan yang kamu pegang</p>
+  <div id="targetGrid" class="grid"></div>
+  <div class="pad"><button id="btnUbahSetup" class="btn ghost">Ubah pengaturan</button></div>
+</section>
+
+<!-- 3. BANTALAN: daftar pemanah per end -->
+<section id="vTarget" class="view" hidden>
+  <div id="sesiTabs" class="segs" hidden></div>
+  <div id="endChips" class="chips"></div>
+  <div id="archerList" class="list"></div>
+  <div class="foot">
+    <button id="btnKirim" class="btn pri" disabled>Kirim End</button>
+  </div>
+</section>
+
+<!-- 4. INPUT ANAK PANAH -->
+<section id="vEntry" class="view" hidden>
+  <div class="who">
+    <div class="pos" id="ePos">A</div>
+    <div><div id="eNama" class="big"></div><div id="eInfo" class="mut"></div></div>
+    <div class="etot"><div class="mut">End</div><div id="eTotal">0</div></div>
+  </div>
+  <div id="eArrows" class="arrows"></div>
+  <div class="runtot mut">Total berjalan: <b id="eRun">0</b></div>
+  <div id="keypad" class="keypad"></div>
+  <div class="row2">
+    <button id="btnDel" class="btn ghost">⌫ Hapus</button>
+    <button id="btnNext" class="btn pri">Pemanah berikutnya ›</button>
+  </div>
+</section>
+
+<!-- Modal kartu skor / konfirmasi -->
+<div id="modal" class="modal" hidden>
+  <div class="sheet">
+    <div id="mBody"></div>
+    <div class="row2" id="mBtns"></div>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
