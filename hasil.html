@@ -37,6 +37,24 @@
   tr.det b{color:var(--tx)}
   .hint{color:var(--mut);font-size:12px;max-width:1100px;margin:8px auto 0;padding:0 16px}
   @media (max-width:600px){table{min-width:0;font-size:13px} th,td{padding:8px 4px} th{font-size:11px} tr.p th:nth-child(3),tr.p td:nth-child(3),thead th:nth-child(3){display:none} td.tot{font-size:15px}}
+  .mode{display:flex;margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;max-width:420px}
+  .mode button{flex:1;border:0;background:none;color:var(--mut);padding:10px 8px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .mode button.on{background:var(--acc);color:#111}
+  .pod{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}
+  .pod div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .pod span{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;color:#111;margin-bottom:6px}
+  .pod b{display:block;font-size:15px} .pod small{color:var(--mut)}
+  .rnd{margin:14px 0 6px;color:var(--acc);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+  .mc{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
+  .mc .rw{display:flex;align-items:center;gap:8px;padding:9px 12px}
+  .mc .rw + .rw{border-top:1px solid var(--line)}
+  .mc .sd{color:var(--mut);font-size:12px;min-width:20px}
+  .mc .nm{flex:1;min-width:0} .mc .nm small{display:block;color:var(--mut);font-size:12px}
+  .mc .pt{font-weight:700;font-size:17px;min-width:28px;text-align:right}
+  .mc .rw.w .nm,.mc .rw.w .pt{color:#2ecc71;font-weight:700}
+  .mc .rw.l{opacity:.6}
+  .mc .ft{font-size:12px;color:var(--mut);padding:5px 12px;background:#111a27}
+  .mc .ft.live{color:var(--acc)}
   input{width:100%;max-width:320px;margin:0 16px 10px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--tx)}
 </style>
 </head>
@@ -44,12 +62,12 @@
 <header>
   <h1 id="judul">Hasil Skor</h1>
   <div class="sub"><span class="dot"></span><span id="waktu">Memuat…</span></div>
-  <div style="margin-top:8px"><a href="bracket.html" style="color:#f5a524;font-weight:600;font-size:14px">⚔ Lihat bracket eliminasi →</a></div>
+  <div class="mode" id="mode"><button data-m="kual" class="on">Hasil Kualifikasi</button><button data-m="elim">Hasil Eliminasi</button></div>
 </header>
-<div style="max-width:1100px;margin:auto"><input id="cari" placeholder="Cari nama / klub…"></div>
+<div style="max-width:1100px;margin:auto" id="boxCari"><input id="cari" placeholder="Cari nama / klub…"></div>
 <nav class="tabs" id="tabs"></nav>
 <nav class="tabs ku" id="tabsKu"></nav>
-<main><div class="wrap" id="isi"><div class="empty">Memuat data…</div></div><p class="hint">Ketuk baris untuk melihat skor per rambahan. Penentu seri: Total → 10+X → X.</p></main>
+<main><div class="wrap" id="isi"><div class="empty">Memuat data…</div></div><div id="isiE"></div><p class="hint" id="hint">Ketuk baris untuk melihat skor per rambahan. Penentu seri: Total → 10+X → X.</p></main>
 
 <script>
 var DATA = null, DIV = null, KU = null, BUKA = {};
@@ -90,8 +108,60 @@ function render(){
   }).join('');
   document.getElementById('isi').innerHTML = '<table><thead>'+head+'</thead><tbody>'+(rows||'<tr><td colspan="'+cols+'" class="empty">Tidak ditemukan</td></tr>')+'</tbody></table>';
 }
+var MODE = location.hash === '#eliminasi' ? 'elim' : 'kual', DATAE = null;
+function nmOrang(o){ return o ? esc(o.nama)+'<small>'+esc(o.klub)+'</small>' : '<i style="color:var(--mut)">'+'—'+'</i>'; }
+function kartuMatch(m, sistem){
+  var main = (m.skorA && m.skorA.length) || (m.skorB && m.skorB.length);
+  var bye = m.pemenang && (!m.a || !m.b);
+  var row = function(o, sisi){
+    var w = m.pemenang === sisi, l = m.pemenang && !w;
+    return '<div class="rw'+(w?' w':'')+(l&&!bye?' l':'')+'"><span class="sd">'+(o?esc(o.seed):'')+'</span><span class="nm">'+(o?nmOrang(o):(bye?'<i style="color:var(--mut)">bye</i>':'<i style="color:var(--mut)">menunggu</i>'))+'</span><span class="pt">'+(main?esc(sisi==='A'?m.poinA:m.poinB):'')+'</span></div>';
+  };
+  var ft = '';
+  if (m.soA !== '' && m.soA != null && m.soB !== '' && m.soB != null) ft = 'Shoot-off '+esc(m.soA)+' – '+esc(m.soB)+(m.soCloser?' · '+(m.soCloser==='A'?(m.a?esc(m.a.nama):''):(m.b?esc(m.b.nama):''))+' lebih dekat':'');
+  var st = bye ? '' : m.pemenang ? '✓ Selesai' : main ? '● Berlangsung' : (m.a && m.b ? 'Belum dimainkan' : '');
+  var info = [st, ft, sistem==='KUMULATIF'&&main?'Total skor':(main?'Poin set':'')].filter(Boolean).join(' · ');
+  return '<div class="mc">'+row(m.a,'A')+row(m.b,'B')+(info?'<div class="ft'+(main&&!m.pemenang?' live':'')+'">'+info+'</div>':'')+'</div>';
+}
+function renderElim(){
+  var box = document.getElementById('isiE');
+  if(!DATAE){ box.innerHTML = '<div class="wrap"><div class="empty">Memuat data eliminasi…</div></div>'; return; }
+  var kats = DATAE.kategori.filter(function(k){return k.punyaBracket});
+  if(!kats.length){ document.getElementById('tabs').innerHTML=''; document.getElementById('tabsKu').innerHTML=''; box.innerHTML = '<div class="wrap"><div class="empty">Babak eliminasi belum dimulai.</div></div>'; return; }
+  var divs = uniq(kats.map(function(k){return k.divisi}));
+  if(divs.indexOf(DIV)<0) DIV = divs[0];
+  var kus = uniq(kats.filter(function(k){return k.divisi===DIV}).map(function(k){return k.sub}));
+  if(kus.indexOf(KU)<0) KU = kus[0];
+  document.getElementById('tabs').innerHTML = divs.map(function(d){ return '<button class="tab'+(d===DIV?' on':'')+'" data-d="'+esc(d)+'">'+esc(d)+'</button>';}).join('');
+  document.getElementById('tabsKu').innerHTML = kus.map(function(k){ return '<button class="tab'+(k===KU?' on':'')+'" data-u="'+esc(k)+'">'+esc(k)+'</button>';}).join('');
+  var kat = kats.filter(function(k){return k.divisi===DIV && k.sub===KU})[0];
+  var ms = DATAE.matches.filter(function(m){return m.kategori===kat.kategori});
+  var fin = ms.filter(function(m){return m.ukuran===2})[0], brz = ms.filter(function(m){return m.ukuran===1})[0];
+  var ambil = function(m, menang){ if(!m||!m.pemenang) return null; return (m.pemenang==='A') === menang ? m.a : m.b; };
+  var pod = [['Juara 1','var(--gold)',ambil(fin,true)],['Juara 2','var(--silver)',ambil(fin,false)],['Juara 3','var(--bronze)',ambil(brz,true)]];
+  var html = '<div class="pod">'+pod.map(function(p){ return '<div><span style="background:'+p[1]+'">'+p[0]+'</span><b>'+(p[2]?esc(p[2].nama):'—')+'</b><small>'+(p[2]?esc(p[2].klub):'Belum ditentukan')+'</small></div>'; }).join('')+'</div>';
+  var urut = function(m){ return m.ukuran === 1 ? 1.5 : m.ukuran; };
+  ms.sort(function(x,y){ return urut(y)-urut(x) || x.no-y.no; });
+  var last = '';
+  ms = ms.filter(function(m){ return !(m.pemenang && (!m.a || !m.b)); });   // sembunyikan bye
+  ms.forEach(function(m){
+    if(m.babak!==last){ html += '<div class="rnd">'+esc(m.babak==='Perunggu'?'Perebutan Juara 3':m.babak)+'</div>'; last = m.babak; }
+    html += kartuMatch(m, kat.sistem);
+  });
+  box.innerHTML = '<div style="color:var(--mut);font-size:13px;margin-bottom:10px">'+esc(kat.kategori)+' · '+(kat.sistem==='KUMULATIF'?'Sistem kumulatif (5 rambahan)':'Sistem set (pertama mencapai 6 poin)')+' · Babak awal '+esc(kat.babakAwal)+'</div>'+html;
+}
+function tampil(){
+  var e = MODE==='elim';
+  document.querySelectorAll('#mode button').forEach(function(b){ b.classList.toggle('on', b.dataset.m===MODE); });
+  document.getElementById('isi').style.display = e?'none':'';
+  document.getElementById('boxCari').style.display = e?'none':'';
+  document.getElementById('hint').style.display = e?'none':'';
+  document.getElementById('isiE').style.display = e?'':'none';
+  if(e) renderElim(); else render();
+}
+document.getElementById('mode').addEventListener('click',function(ev){ var b=ev.target.closest('button'); if(!b) return; MODE=b.dataset.m; history.replaceState(null,'',MODE==='elim'?'#eliminasi':'#'); KU=null; tampil(); muat(); });
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycby8NxBvkBGVCFVEb47rhzRscLnEbdFuKm8mmAEfR2ajyUaiK4Mf26V7TspkIipCHY_F6A/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 function apiUrl(){
   var q = new URLSearchParams(location.search).get('api');
@@ -103,19 +173,20 @@ function apiUrl(){
 function muat(){
   var u = apiUrl();
   if(!u){ document.getElementById('waktu').textContent = 'URL Web App belum diisi di hasil.html (API_URL).'; return; }
-  fetch(u + '?action=hasil', {redirect:'follow'}).then(function(r){return r.json()}).then(function(j){
+  fetch(u + '?action=' + (MODE==='elim'?'eliminasi':'hasil'), {redirect:'follow'}).then(function(r){return r.json()}).then(function(j){
     if(!j.ok) throw new Error(j.error||'Gagal');
-    DATA = j; render();
+    if (MODE==='elim') DATAE = j; else DATA = j;
+    tampil();
     document.getElementById('waktu').textContent = 'Live · diperbarui '+new Date().toLocaleTimeString('id-ID');
   }).catch(function(e){
     document.getElementById('waktu').textContent = 'Gagal memuat, mencoba lagi… ('+e.message+')';
   });
 }
-document.getElementById('tabs').addEventListener('click',function(e){var b=e.target.closest('.tab'); if(b){DIV=b.dataset.d; KU=null; render();}});
-document.getElementById('tabsKu').addEventListener('click',function(e){var b=e.target.closest('.tab'); if(b){KU=b.dataset.u; render();}});
+document.getElementById('tabs').addEventListener('click',function(e){var b=e.target.closest('.tab'); if(b){DIV=b.dataset.d; KU=null; tampil();}});
+document.getElementById('tabsKu').addEventListener('click',function(e){var b=e.target.closest('.tab'); if(b){KU=b.dataset.u; tampil();}});
 document.getElementById('isi').addEventListener('click',function(e){var r=e.target.closest('tr.p'); if(r){BUKA[r.dataset.id]=!BUKA[r.dataset.id]; render();}});
 document.getElementById('cari').addEventListener('input',render);
-muat(); setInterval(muat, 15000);
+tampil(); muat(); setInterval(muat, 15000);
 </script>
 </body>
 </html>
