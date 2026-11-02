@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cetak Skor</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root{--ink:#111;--mut:#555;--line:#999;--acc:#c77700}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:#d9dde3;color:var(--ink)}
+  /* ---------- panel kontrol (tidak ikut tercetak) ---------- */
+  .bar{position:sticky;top:0;z-index:5;background:#0f1724;color:#eef2f7;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .bar h1{font-size:17px;margin:0 12px 0 0}
+  .bar label{font-size:13px;display:flex;align-items:center;gap:6px}
+  .bar select{padding:8px;border-radius:8px;border:1px solid #2a3a50;background:#17212f;color:#eef2f7;font-size:14px;max-width:220px}
+  .seg{display:flex;background:#17212f;border-radius:10px;padding:3px}
+  .seg button{border:0;background:transparent;color:#8b98ab;padding:8px 12px;border-radius:8px;font-weight:600;font-size:14px}
+  .seg button.on{background:#f5a524;color:#111}
+  .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:14px;background:#2a3a50;color:#eef2f7}
+  .btn.pri{background:#f5a524;color:#111}
+  .info{width:100%;font-size:12px;color:#8b98ab}
+  #status{padding:24px;text-align:center;color:#333}
+
+  /* ---------- lembar A4 di layar ---------- */
+  .page{background:#fff;width:210mm;min-height:297mm;margin:12px auto;padding:10mm;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+  @media (max-width:820px){ .page{width:100%;min-height:0;padding:4mm} }
+
+  /* ---------- scoresheet per bantalan: A4 landscape, 1 kolom per pemanah ---------- */
+  body.land .page{width:297mm;min-height:210mm}
+  .sh-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4mm}
+  .sh-head .ev{font-size:14pt;font-weight:800}
+  .sh-head .sub{font-size:8.5pt;color:var(--mut);line-height:1.35}
+  .sh-head .tg{text-align:right;font-size:8pt;color:var(--mut)}
+  .sh-head .tg b{display:block;font-size:20pt;color:var(--ink);line-height:1}
+  .cols{display:flex;gap:5mm;align-items:flex-start}
+  .col{flex:0 0 calc((100% - 15mm) / var(--n));min-width:0}
+  .ah{display:grid;grid-template-columns:1fr auto;border-bottom:1px solid var(--ink);margin-bottom:1mm}
+  .ah .nm{font-size:10.5pt;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-top:1mm}
+  .ah .nm small{font-weight:400;font-size:6.5pt;color:var(--mut);margin-right:1.5mm}
+  .ah .cl{font-size:7pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:.8mm 0 1mm;border-top:1px solid #bbb}
+  .ah .cl small{color:var(--mut);margin-right:1.5mm}
+  .ah .pos{grid-row:1/3;grid-column:2;text-align:right;padding-left:2mm;border-left:1px solid #bbb;min-width:15mm}
+  .ah .pos b{display:block;font-size:17pt;line-height:1.1}
+  .ah .pos span{display:block;font-size:7.5pt;font-weight:700;background:#eee;text-align:center;padding:.4mm 1mm}
+  table.ss{border-collapse:collapse;width:100%;table-layout:fixed;font-size:9pt}
+  table.ss th,table.ss td{border:1px solid #444;text-align:center;padding:0;height:7.8mm}
+  table.ss thead th{background:#ececec;font-size:8pt}
+  table.ss thead tr.t1 th{height:5mm}
+  table.ss thead tr.t2 th{height:4mm;font-size:6.5pt}
+  table.ss th.cap{font-size:6.5pt;font-weight:700}
+  table.ss td.en{background:#ececec;font-weight:800;font-size:10pt}
+  table.ss td.sm{font-weight:600}
+  table.ss td.x{background:linear-gradient(to top right,transparent calc(50% - .5px),#888 50%,transparent calc(50% + .5px)),linear-gradient(to bottom right,transparent calc(50% - .5px),#888 50%,transparent calc(50% + .5px))}
+  table.ss td.et{font-weight:700}
+  table.ss td.ck{font-weight:800;background:#f6f6f6}
+  table.ss tr.endb td{border-bottom:1.6px solid var(--ink)}
+  table.ss tr.ft td{border:1.4px solid var(--ink);height:7.5mm;font-weight:800;font-size:10.5pt}
+  table.ss tr.ft td.lbl{border:0;text-align:right;padding-right:2mm;font-size:10pt}
+  .sg{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-top:14mm;font-size:7pt;font-style:italic;font-weight:700;text-align:center}
+  .sg div{border-top:1px solid var(--ink);padding-top:.8mm}
+  .foot{margin-top:6mm;font-size:7pt;color:var(--mut);display:flex;justify-content:space-between}
+
+  /* ---------- hasil per kategori ---------- */
+  .rh{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ink);padding-bottom:3mm;margin-bottom:4mm}
+  .rh .ev{font-size:15pt;font-weight:800}
+  .rh .sub{font-size:9pt;color:var(--mut)}
+  .rh .kat{text-align:right;font-size:9pt;color:var(--mut)}
+  .rh .kat b{display:block;font-size:15pt;color:var(--ink)}
+  table.rs{width:100%;border-collapse:collapse;font-size:10pt}
+  table.rs th{background:#111;color:#fff;font-size:8pt;font-weight:600;padding:2mm 1.5mm;text-transform:uppercase}
+  table.rs td{border-bottom:1px solid #ccc;padding:1.8mm 1.5mm;text-align:center}
+  table.rs td.l,table.rs th.l{text-align:left}
+  table.rs td.t{font-weight:800}
+  table.rs tr:nth-child(even) td{background:#f6f6f6}
+  .rnote{font-size:8pt;color:var(--mut);margin-top:3mm}
+  .rsign{display:grid;grid-template-columns:1fr 1fr;gap:20mm;margin-top:14mm;font-size:9pt;text-align:center}
+  .rsign div{border-top:1px solid var(--ink);padding-top:1.5mm;margin-top:16mm}
+  .rpage + .rpage.brk{page-break-before:always;break-before:page}
+  .rpage + .rpage:not(.brk){margin-top:10mm}
+
+  /* ---------- saat dicetak ---------- */
+  @media print{
+    body{background:#fff}
+    .noprint{display:none!important}
+    .page,body.land .page{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}
+    .page + .page{page-break-before:always;break-before:page}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="bar noprint">
+  <h1>Cetak Skor</h1>
+  <div class="seg" id="mode">
+    <button data-m="kartu" class="on">Scoresheet</button>
+    <button data-m="hasil">Hasil</button>
+  </div>
+  <label id="lKat" hidden>Kategori <select id="fKat"><option value="">Semua</option></select></label>
+  <label id="lSesi">Sesi <select id="fSesi"></select></label>
+  <label id="lBant">Bantalan <select id="fBant"><option value="">Semua</option></select></label>
+  <label id="lKosong"><input type="checkbox" id="fKosong"> Kartu kosong</label>
+  <label id="lBrk" hidden><input type="checkbox" id="fBrk" checked> 1 kategori per halaman</label>
+  <button class="btn" id="btnMuat">↻ Muat ulang</button>
+  <button class="btn pri" id="btnCetak">🖨 Cetak / Simpan PDF</button>
+  <div class="info">Simpan sebagai PDF: klik Cetak → pilih printer <b>"Simpan sebagai PDF"</b>. Di HP Android: Chrome ⋮ → Bagikan → Cetak. Kertas A4 (scoresheet otomatis landscape).</div>
+</div>
+<style id="pg">@page{size:A4 landscape;margin:8mm}</style>
+<div id="status" class="noprint">Memuat data…</div>
+<div id="out"></div>
+
+<script>
+/* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
+/* ================================================================== */
+var MODE = 'kartu', KARTU = null, HASIL = null;
+var $ = function(id){ return document.getElementById(id); };
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function val(a){ return a === 'X' ? 10 : a === 'M' ? 0 : Number(a) || 0; }
+function apiUrl(){
+  var q = new URLSearchParams(location.search).get('api');
+  if (q) return q;
+  if (/^https:\/\/script\.google/.test(API_URL)) return API_URL;
+  try { var c = JSON.parse(localStorage.getItem('cfg') || '{}'); if (c.api) return c.api; } catch(e){}
+  return '';
+}
+function ambil(action){
+  return fetch(apiUrl() + '?action=' + action, {redirect:'follow'}).then(function(r){ return r.json(); })
+    .then(function(j){ if (!j.ok) throw new Error(j.error || 'Gagal'); return j; });
+}
+function waktuCetak(){ return new Date().toLocaleString('id-ID', {dateStyle:'medium', timeStyle:'short'}); }
+
+/* ---------- memuat data ---------- */
+function muat(){
+  if (!apiUrl()) { $('status').textContent = 'URL Web App belum diisi di cetak.html (baris API_URL).'; return; }
+  $('status').hidden = false; $('status').textContent = 'Memuat data…';
+  Promise.all([ambil('kartu'), ambil('hasil')]).then(function(r){
+    KARTU = r[0]; HASIL = r[1];
+    isiFilter(); render();
+    $('status').hidden = true;
+  }).catch(function(e){ $('status').textContent = 'Gagal memuat: ' + e.message; });
+}
+function isiFilter(){
+  var kat = $('fKat').value, ban = $('fBant').value;
+  var fs = $('fSesi').value, so = '<option value="">Semua sesi</option>';
+  for (var s = 1; s <= KARTU.jumlahSesi; s++) so += '<option value="' + s + '">Sesi ' + s + '</option>';
+  $('fSesi').innerHTML = so; $('fSesi').value = fs;
+  var kats = HASIL.data.map(function(k){ return k.kategori; });
+  $('fKat').innerHTML = '<option value="">Semua</option>' + kats.map(function(k){ return '<option>' + esc(k) + '</option>'; }).join('');
+  var bans = []; KARTU.data.forEach(function(p){ if (bans.indexOf(p.bantalan) < 0) bans.push(p.bantalan); });
+  $('fBant').innerHTML = '<option value="">Semua</option>' + bans.map(function(b){ return '<option>' + esc(b) + '</option>'; }).join('');
+  $('fKat').value = kats.indexOf(kat) >= 0 ? kat : '';
+  $('fBant').value = bans.indexOf(ban) >= 0 ? ban : '';
+}
+
+/* ---------- scoresheet kualifikasi: 1 lembar A4 landscape per bantalan per sesi ---------- */
+var KODE_DIV = { RECURVE: 'R', COMPOUND: 'C', NASIONAL: 'N', BAREBOW: 'B' };
+function kodeKat(p){ return [KODE_DIV[p.divisi] || p.divisi, p.ku, p.gender].filter(Boolean).join(' '); }
+function kolomPemanah(p, cfg, sesi, kosong){
+  var n = cfg.panahPerEnd, per = Math.ceil(n / 2), eps = cfg.endPerSesi;
+  var head = '<thead><tr class="t1"><th rowspan="2" style="width:9%"></th>';
+  for (var k = 1; k <= per; k++) head += '<th rowspan="2">' + k + '</th>';
+  head += '<th colspan="5" class="cap">' + esc(cfg.jumlahSesi > 1 ? 'Kualifikasi · Sesi ' + sesi : 'Kualifikasi') + '</th></tr>' +
+          '<tr class="t2"><th>Sum</th><th colspan="2">Tot.</th><th style="width:9%">10+X</th><th style="width:8%">X</th></tr></thead>';
+  var body = '', kum = 0, tx = 0, t10 = 0, ada = false;
+  for (var e = 1; e <= eps; e++) {
+    var en = (sesi - 1) * eps + e;
+    var a = !kosong && p.skor && p.skor[en] ? p.skor[en].arrows : [];
+    var r1 = a.slice(0, per), r2 = a.slice(per, n);
+    var s1 = 0, s2 = 0, x = 0, s10 = 0;
+    r1.forEach(function(v){ s1 += val(v); }); r2.forEach(function(v){ s2 += val(v); });
+    a.forEach(function(v){ if (v === 'X') x++; if (v === 'X' || v === '10') s10++; });
+    var isi = a.length > 0;
+    if (isi) { ada = true; kum += s1 + s2; tx += x; t10 += s10; }
+    var c1 = '', c2 = '';
+    for (var i = 0; i < per; i++) { c1 += '<td>' + esc(r1[i] || '') + '</td>'; c2 += '<td>' + esc(r2[i] || '') + '</td>'; }
+    body += '<tr><td class="en" rowspan="2">' + e + '</td>' + c1 + '<td class="sm">' + (r1.length ? s1 : '') + '</td>' +
+            '<td class="x" colspan="2"></td><td rowspan="2">' + (isi ? s10 : '') + '</td><td rowspan="2">' + (isi ? x : '') + '</td></tr>' +
+            '<tr class="endb">' + c2 + '<td class="sm">' + (r2.length ? s2 : '') + '</td>' +
+            '<td class="et">' + (isi ? s1 + s2 : '') + '</td><td class="ck">' + (isi ? kum : '') + '</td></tr>';
+  }
+  body += '<tr class="ft"><td class="lbl" colspan="' + (per + 2) + '">Total</td><td colspan="2">' + (ada ? kum : '') + '</td><td>' + (ada ? t10 : '') + '</td><td>' + (ada ? tx : '') + '</td></tr>';
+  return '<div class="col"><div class="ah">' +
+      '<div class="nm"><small>Pemanah:</small>' + esc(p.nama) + '</div>' +
+      '<div class="pos"><b>' + esc(p.bantalan + p.posisi) + '</b><span>' + esc(kodeKat(p)) + '</span></div>' +
+      '<div class="cl"><small>Klub:</small>' + esc(p.klub || '-') + '</div></div>' +
+    '<table class="ss">' + head + '<tbody>' + body + '</tbody></table>' +
+    '<div class="sg"><div>Pemanah</div><div>Pencatat Skor</div></div></div>';
+}
+function lembarBantalan(list, cfg, sesi, kosong){
+  var n = Math.max(3, list.length);
+  return '<div class="page"><div class="sh-head"><div><div class="ev">' + esc(cfg.namaLomba) + '</div>' +
+      '<div class="sub">' + [cfg.penyelenggara, cfg.tempatTanggal].filter(Boolean).map(esc).join('<br>') + '</div></div>' +
+      '<div class="tg">Bantalan<b>' + esc(list[0].bantalan) + '</b>' + (cfg.jumlahSesi > 1 ? 'Sesi ' + sesi : '') + '</div></div>' +
+    '<div class="cols" style="--n:' + n + '">' + list.map(function(p){ return kolomPemanah(p, cfg, sesi, kosong); }).join('') + '</div>' +
+    '<div class="foot"><span>Face 10-ring: X,10–1,M · Face 6-ring (Compound/Nasional): X,10–5,M · X dihitung 10</span><span>Dicetak ' + waktuCetak() + '</span></div></div>';
+}
+function renderKartu(){
+  var ban = $('fBant').value, kosong = $('fKosong').checked, fs = $('fSesi').value;
+  var sesiList = []; for (var s = 1; s <= KARTU.jumlahSesi; s++) if (!fs || String(s) === fs) sesiList.push(s);
+  var grup = {}, urut = [];
+  KARTU.data.forEach(function(p){ if (ban && p.bantalan !== ban) return; if (!grup[p.bantalan]) { grup[p.bantalan] = []; urut.push(p.bantalan); } grup[p.bantalan].push(p); });
+  if (!urut.length) return '<div class="page"><p>Tidak ada pemanah untuk filter ini.</p></div>';
+  var html = '';
+  urut.forEach(function(b){
+    var list = grup[b].slice(0, 4); // maksimal 4 pemanah (A–D) per lembar
+    sesiList.forEach(function(s){ html += lembarBantalan(list, KARTU, s, kosong); });
+  });
+  return html;
+}
+
+/* ---------- hasil per kategori ---------- */
+function renderHasil(){
+  var kat = $('fKat').value, brk = $('fBrk').checked, nS = HASIL.jumlahSesi;
+  var grp = HASIL.data.filter(function(k){ return !kat || k.kategori === kat; });
+  if (!grp.length) return '<div class="page"><p>Tidak ada data.</p></div>';
+  var body = grp.map(function(g, gi){
+    var head = '<tr><th>#</th><th class="l">Nama</th><th class="l">Klub</th><th>Bant.</th>';
+    for (var s = 1; s <= nS; s++) head += '<th>' + (nS > 1 ? 'Sesi ' + s : 'Skor') + '</th>';
+    head += '<th>Total</th><th>10+X</th><th>X</th></tr>';
+    var rows = g.peserta.map(function(p){
+      return '<tr><td class="t">' + p.rank + '</td><td class="l">' + esc(p.nama) + '</td><td class="l">' + esc(p.klub) + '</td><td>' + esc(p.bantalan) + '</td>' +
+        p.sesi.map(function(v){ return '<td>' + (v === null ? '–' : v) + '</td>'; }).join('') +
+        '<td class="t">' + p.total + '</td><td>' + p.sepuluh + '</td><td>' + p.x + '</td></tr>';
+    }).join('');
+    return '<section class="rpage' + (brk && gi > 0 ? ' brk' : '') + '">' +
+      '<div class="rh"><div><div class="ev">' + esc(HASIL.namaLomba) + '</div><div class="sub">Hasil Kualifikasi · dicetak ' + waktuCetak() + '</div></div>' +
+      '<div class="kat">Kategori<b>' + esc(g.kategori) + '</b></div></div>' +
+      '<table class="rs"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table>' +
+      '<div class="rnote">Penentu peringkat: Total → jumlah 10+X → jumlah X. Peringkat sama = hasil identik.</div>' +
+      (brk || gi === grp.length - 1 ? '<div class="rsign"><div>Direktur Pertandingan</div><div>Ketua Juri</div></div>' : '') +
+    '</section>';
+  }).join('');
+  // dengan "1 kategori per halaman", tiap kategori jadi halaman sendiri
+  return '<div class="page">' + body + '</div>';
+}
+
+function render(){
+  if (!KARTU) return;
+  var k = MODE === 'kartu';
+  $('lBant').hidden = !k; $('lSesi').hidden = !k; $('lKosong').hidden = !k; $('lBrk').hidden = k; $('lKat').hidden = k;
+  document.body.classList.toggle('land', k);
+  $('pg').textContent = k ? '@page{size:A4 landscape;margin:8mm}' : '@page{size:A4 portrait;margin:10mm}';
+  $('out').innerHTML = MODE === 'kartu' ? renderKartu() : renderHasil();
+  document.title = k ? 'Scoresheet' + ($('fBant').value ? ' Bantalan ' + $('fBant').value : '') + ($('fSesi').value ? ' Sesi ' + $('fSesi').value : '') + ' - ' + KARTU.namaLomba
+                     : 'Hasil' + ($('fKat').value ? ' - ' + $('fKat').value : '') + ' - ' + KARTU.namaLomba;
+}
+
+$('mode').onclick = function(e){
+  var b = e.target.closest('button'); if (!b) return;
+  MODE = b.dataset.m;
+  Array.prototype.forEach.call(this.children, function(x){ x.classList.toggle('on', x === b); });
+  render();
+};
+['fKat','fBant','fSesi','fKosong','fBrk'].forEach(function(id){ $(id).onchange = render; });
+$('btnMuat').onclick = muat;
+$('btnCetak').onclick = function(){ window.print(); };
+var qm = new URLSearchParams(location.search).get('mode');
+if (qm === 'hasil') $('mode').children[1].click();
+muat();
+</script>
+</body>
+</html>
