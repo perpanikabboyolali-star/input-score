@@ -97,7 +97,6 @@
 <div class="ptitle" id="pMain"><b id="pEv"></b><span>Bracket Eliminasi<b id="pKat"></b></span></div>
 <div class="meta" id="meta"></div>
 <div class="wrap"><div id="isi" class="empty">Memuat data…</div></div>
-<div class="psign" id="psign"><div>Direktur Pertandingan</div><div>Ketua Juri</div></div>
 <div id="semua"></div>
 
 <p id="masukAdmin" style="margin:6px 16px 30px;font-size:12px"><a href="#" style="color:#8b98ab">🔒 Masuk panitia (atur & cetak bracket)</a></p>
@@ -127,7 +126,7 @@
 <script src="admin-auth.js"></script>
 <script>
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycby8NxBvkBGVCFVEb47rhzRscLnEbdFuKm8mmAEfR2ajyUaiK4Mf26V7TspkIipCHY_F6A/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 var DATA = null, KAT = null;
 var $ = function(id){ return document.getElementById(id); };
@@ -261,7 +260,7 @@ function siapCetak(){
   var semua = $('cSemua').checked;
   document.body.classList.add('printing');
   document.body.classList.toggle('semua', semua);
-  $('isi').parentNode.style.display = semua ? 'none' : ''; $('psign').style.display = semua ? 'none' : '';
+  $('isi').parentNode.style.display = semua ? 'none' : '';
   if (semua) {
     var kats = DATA.kategori.filter(function(k){ return k.punyaBracket; });
     $('semua').innerHTML = kats.map(function(k, i){
@@ -269,13 +268,13 @@ function siapCetak(){
         '<div class="ptitle" style="display:flex"><b>' + esc(DATA.namaLomba) + '</b><span>Bracket Eliminasi<b>' + esc(k.kategori) + '</b></span></div>' +
         '<div class="meta">Mulai babak ' + esc(k.babakAwal) + ' · ' + (k.sistem === 'SET' ? 'sistem set' : 'sistem kumulatif') + '</div>' +
         '<div class="wrap"><div>' + bracketHtml(k.kategori) + '</div></div>' +
-        '<div class="psign" style="display:grid"><div>Direktur Pertandingan</div><div>Ketua Juri</div></div></section>';
+        '</section>';
     }).join('');
     pasSkala($('semua'));
   } else { $('semua').innerHTML = ''; pasSkala($('isi')); }
 }
 function selesaiCetak(){
-  $('isi').parentNode.style.display = ''; $('psign').style.display = ''; $('semua').innerHTML = '';
+  $('isi').parentNode.style.display = ''; $('semua').innerHTML = '';
   document.body.classList.remove('semua'); document.body.classList.remove('printing');
   document.querySelectorAll('#isi .br').forEach(function(b){ b.style.zoom = ''; });
 }
