@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel Panitia</title>
+<style>
+  :root{--bg:#0f1724;--card:#17212f;--line:#2a3a50;--tx:#eef2f7;--mut:#8b98ab;--acc:#f5a524}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  main{max-width:560px;margin:0 auto;padding:20px 16px 40px}
+  .tag{font-size:12px;color:var(--acc);font-weight:700;letter-spacing:.06em}
+  h1{margin:4px 0 2px;font-size:22px} p.mut{color:var(--mut);margin:0 0 18px;font-size:14px}
+  a.item{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:10px;color:var(--tx);text-decoration:none}
+  a.item:active{border-color:var(--acc)}
+  a.item .ic{font-size:26px;width:36px;text-align:center}
+  a.item b{display:block;font-size:16px} a.item span{color:var(--mut);font-size:13px}
+  button{margin-top:14px;width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--mut);font-size:14px}
+  #isi{display:none}
+</style>
+</head>
+<body>
+<main id="isi">
+  <div class="tag">KHUSUS PANITIA</div>
+  <h1 id="judul">Panel Panitia</h1>
+  <p class="mut">Halaman ini tidak tersedia di aplikasi scorer.</p>
+  <a class="item" id="lCetak" href="cetak.html"><div class="ic">🖨</div><div><b>Cetak scoresheet & hasil</b><span>Kartu per bantalan per sesi, kartu kosong, hasil PDF</span></div></a>
+  <a class="item" id="lBracket" href="bracket.html?admin=1"><div class="ic">⚔</div><div><b>Atur & cetak bracket</b><span>Buat / hapus bracket eliminasi, cetak bracket</span></div></a>
+  <a class="item" id="lHasil" href="hasil.html"><div class="ic">🏆</div><div><b>Hasil live</b><span>Peringkat kualifikasi untuk penonton</span></div></a>
+  <button id="keluar">Keluar dari mode panitia</button>
+</main>
+<script src="admin-auth.js"></script>
+<script>
+/* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
+/* ================================================================== */
+function apiUrl(){
+  var q = new URLSearchParams(location.search).get('api');
+  if (q) return q;
+  if (/^https:\/\/script\.google/.test(API_URL)) return API_URL;
+  try { var c = JSON.parse(localStorage.getItem('cfg') || '{}'); if (c.api) return c.api; } catch(e){}
+  return '';
+}
+var q = new URLSearchParams(location.search).get('api');
+if (q) ['lCetak','lHasil'].forEach(function(id){ var a = document.getElementById(id); a.href += '?api=' + encodeURIComponent(q); });
+if (q) document.getElementById('lBracket').href += '&api=' + encodeURIComponent(q);
+document.getElementById('keluar').onclick = function(){ AdminAuth.clear(); location.reload(); };
+AdminAuth.gate(apiUrl(), function(){
+  document.getElementById('isi').style.display = 'block';
+  fetch(apiUrl() + '?action=config').then(function(r){ return r.json(); }).then(function(c){
+    if (c.namaLomba) document.getElementById('judul').textContent = c.namaLomba;
+  }).catch(function(){});
+}, 'Panel Panitia');
+</script>
+</body>
+</html>

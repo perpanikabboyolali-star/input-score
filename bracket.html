@@ -60,10 +60,11 @@
   body.printing .m .r .nm small{display:none}
   body.printing .m .ft{display:none}
   body.printing .bronze{margin-top:10px}
+  [hidden]{display:none!important}
   @page{size:A4 landscape;margin:8mm}
   @media print{
     *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    details,.tabs,.sub,.pbtn,header{display:none!important}
+    details,.tabs,.sub,.pbtn,header,#masukAdmin{display:none!important}
     body{background:#fff;color:#000}
     .ptitle{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding:0 0 2mm;margin-bottom:3mm}
     .ptitle b{font-size:15pt} .ptitle span{font-size:9pt;color:#444;text-align:right}
@@ -89,7 +90,7 @@
   <div class="sub"><span class="dot"></span><span id="waktu">Memuat…</span></div>
 </header>
 <nav class="tabs" id="tabs"></nav>
-<div class="pbtn">
+<div class="pbtn" id="pbtn" hidden>
   <button class="btn pri" id="btnCetak">🖨 Cetak bracket / Simpan PDF</button>
   <label><input type="checkbox" id="cSemua"> Semua kategori (1 halaman per kategori)</label>
 </div>
@@ -99,10 +100,10 @@
 <div class="psign" id="psign"><div>Direktur Pertandingan</div><div>Ketua Juri</div></div>
 <div id="semua"></div>
 
-<details id="admin">
+<p id="masukAdmin" style="margin:6px 16px 30px;font-size:12px"><a href="#" style="color:#8b98ab">🔒 Masuk panitia (atur & cetak bracket)</a></p>
+<details id="admin" hidden>
   <summary>⚙ Atur bracket (panitia)</summary>
   <div class="adm">
-    <label>PIN petugas <input id="aPin" type="password" inputmode="numeric"></label>
     <label>Kategori <select id="aKat"></select></label>
     <label>Mulai dari babak
       <select id="aBabak">
@@ -123,9 +124,10 @@
   </div>
 </details>
 
+<script src="admin-auth.js"></script>
 <script>
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycbwHVdtUbeem-L9hjqPtBwzp1xDGInNsk2TQxj0lWuNz8HC84naRmxjkuCYjkYoyHfOhgQ/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 var DATA = null, KAT = null;
 var $ = function(id){ return document.getElementById(id); };
@@ -211,7 +213,7 @@ function saran(){
     ' Sistem: <b>' + (k.sistem === 'SET' ? 'set' : 'kumulatif') + '</b>.';
 }
 function kirim(body){
-  body.pin = $('aPin').value.trim();
+  body.pin = AdminAuth.get();
   $('admMsg').textContent = 'Memproses…';
   return fetch(apiUrl(), { method:'POST', redirect:'follow', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body) })
     .then(function(r){ return r.json(); }).then(function(j){ if (!j.ok) throw new Error(j.error || 'Gagal'); return j; });
@@ -232,7 +234,6 @@ $('aHapus').onclick = function(){
     .catch(function(e){ $('admMsg').textContent = '✗ ' + e.message; });
 };
 $('tabs').onclick = function(e){ var b = e.target.closest('.tab'); if (b) { KAT = b.dataset.k; render(); } };
-$('aPin').value = savedCfg().pin || '';
 /* ---------- cetak ---------- */
 function bracketHtml(kat){
   var ms = DATA.matches.filter(function(m){ return m.kategori === kat; });
@@ -282,6 +283,10 @@ window.addEventListener('beforeprint', siapCetak);
 window.addEventListener('afterprint', selesaiCetak);
 var CETAK = false;
 $('btnCetak').onclick = function(){ if (!DATA) return; CETAK = true; siapCetak(); setTimeout(function(){ window.print(); CETAK = false; }, 50); };
+function modeAdmin(){ $('admin').hidden = false; $('pbtn').hidden = false; $('masukAdmin').hidden = true; $('admin').open = true; }
+$('masukAdmin').onclick = function(e){ e.preventDefault(); AdminAuth.gate(apiUrl(), modeAdmin, 'Atur & Cetak Bracket'); };
+if (AdminAuth.get() && apiUrl()) AdminAuth.check(apiUrl(), AdminAuth.get()).then(modeAdmin).catch(function(){ AdminAuth.clear(); });
+if (new URLSearchParams(location.search).get('admin') === '1' && !AdminAuth.get()) AdminAuth.gate(apiUrl(), modeAdmin, 'Atur & Cetak Bracket');
 muat(); setInterval(function(){ if (!CETAK) muat(); }, 15000);
 </script>
 </body>

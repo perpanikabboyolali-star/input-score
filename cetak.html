@@ -109,9 +109,10 @@
 <div id="status" class="noprint">Memuat data…</div>
 <div id="out"></div>
 
+<script src="admin-auth.js"></script>
 <script>
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycbwHVdtUbeem-L9hjqPtBwzp1xDGInNsk2TQxj0lWuNz8HC84naRmxjkuCYjkYoyHfOhgQ/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 var MODE = 'kartu', KARTU = null, HASIL = null;
 var $ = function(id){ return document.getElementById(id); };
@@ -125,7 +126,7 @@ function apiUrl(){
   return '';
 }
 function ambil(action){
-  return fetch(apiUrl() + '?action=' + action, {redirect:'follow'}).then(function(r){ return r.json(); })
+  return fetch(apiUrl() + '?action=' + action + (action === 'kartu' ? '&pin=' + encodeURIComponent(AdminAuth.get()) : ''), {redirect:'follow'}).then(function(r){ return r.json(); })
     .then(function(j){ if (!j.ok) throw new Error(j.error || 'Gagal'); return j; });
 }
 function waktuCetak(){ return new Date().toLocaleString('id-ID', {dateStyle:'medium', timeStyle:'short'}); }
@@ -257,7 +258,7 @@ $('btnMuat').onclick = muat;
 $('btnCetak').onclick = function(){ window.print(); };
 var qm = new URLSearchParams(location.search).get('mode');
 if (qm === 'hasil') $('mode').children[1].click();
-muat();
+AdminAuth.gate(apiUrl(), function(){ muat(); }, 'Cetak Scoresheet & Hasil');
 </script>
 </body>
 </html>

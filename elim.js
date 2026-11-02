@@ -82,7 +82,7 @@
     E.data = E.data || load('elimData', null);
     if (!E.data) { $('elList').innerHTML = '<p class="mut pad">Memuat…</p>'; return; }
     var kats = E.data.kategori.filter(function (k) { return k.punyaBracket; });
-    if (!kats.length) { $('elKat').innerHTML = ''; $('elList').innerHTML = '<p class="mut pad">Belum ada bracket. Buat bracket di halaman <b>Lihat bracket / atur bracket</b>.</p>'; return; }
+    if (!kats.length) { $('elKat').innerHTML = ''; $('elList').innerHTML = '<p class="mut pad">Belum ada bracket. Panitia akan membuat bracket setelah kualifikasi selesai.</p>'; return; }
     if (!E.kat || !kats.some(function (k) { return k.kategori === E.kat; })) E.kat = kats[0].kategori;
     $('hSub').textContent = E.kat;
     $('elKat').innerHTML = kats.map(function (k) { return '<button class="chip' + (k.kategori === E.kat ? ' on' : '') + '" data-k="' + esc(k.kategori) + '">' + esc(k.kategori) + '</button>'; }).join('');
