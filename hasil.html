@@ -90,7 +90,7 @@ function render(){
   document.getElementById('isi').innerHTML = '<table><thead>'+head+'</thead><tbody>'+(rows||'<tr><td colspan="'+cols+'" class="empty">Tidak ditemukan</td></tr>')+'</tbody></table>';
 }
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
+var API_URL = 'https://script.google.com/macros/s/AKfycbzX9ii47XXFVlvk3K2Hzqz2mGf5vpwucXgEfTzvdnu0x77KFMgzM_XPFGWlYeTd6xDwog/exec';
 /* ================================================================== */
 function apiUrl(){
   var q = new URLSearchParams(location.search).get('api');
