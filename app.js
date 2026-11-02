@@ -94,7 +94,7 @@
 
   /* ---------- navigasi ---------- */
   function show(view) {
-    ['vSetup', 'vTargets', 'vTarget', 'vEntry'].forEach(function (v) { $(v).hidden = v !== view; });
+    ['vSetup', 'vTargets', 'vTarget', 'vEntry', 'vElim', 'vMatch'].forEach(function (v) { if ($(v)) $(v).hidden = v !== view; });
     S.view = view;
     $('btnBack').hidden = (view === 'vSetup' || view === 'vTargets');
     var t = meta.namaLomba, sub = '';
@@ -103,7 +103,9 @@
     $('hTitle').textContent = t; $('hSub').textContent = sub;
     window.scrollTo(0, 0);
   }
+  window.AppShow = function (v) { show(v); if (v === 'vTargets') loadTargets(); };
   $('btnBack').onclick = function () {
+    if (window.ElimUI && window.ElimUI.back()) return;
     if (S.view === 'vEntry') { renderTarget(); show('vTarget'); }
     else if (S.view === 'vTarget') { show('vTargets'); loadTargets(); }
   };

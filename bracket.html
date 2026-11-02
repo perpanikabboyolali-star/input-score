@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bracket Eliminasi</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root{--bg:#0f1724;--card:#17212f;--line:#2a3a50;--tx:#e8edf4;--mut:#8b98ab;--acc:#f5a524;--ok:#2ecc71;--err:#ff5d5d}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+  header{padding:18px 16px 6px}
+  h1{margin:0;font-size:22px}
+  .sub{color:var(--mut);font-size:13px;margin-top:4px;display:flex;gap:8px;align-items:center}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 16px}
+  .tab{flex:none;border:1px solid var(--line);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:999px;font-size:14px;cursor:pointer}
+  .tab.on{background:var(--acc);color:#111;border-color:var(--acc);font-weight:600}
+  .meta{padding:0 16px;color:var(--mut);font-size:13px}
+  .wrap{overflow-x:auto;padding:12px 16px 24px}
+  .br{display:flex;gap:22px;min-width:max-content}
+  .rd{display:flex;flex-direction:column;width:210px}
+  .rd h3{margin:0 0 8px;font-size:12px;color:var(--acc);text-transform:uppercase;letter-spacing:.06em;text-align:center}
+  .rd .col{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:10px}
+  .m{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
+  .m.live{border-color:var(--acc)}
+  .m .r{display:grid;grid-template-columns:24px 1fr auto;gap:6px;padding:6px 8px;align-items:center}
+  .m .r + .r{border-top:1px solid var(--line)}
+  .m .r .sd{color:var(--mut);font-size:11px;text-align:right}
+  .m .r .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .m .r .nm small{display:block;color:var(--mut);font-size:10px}
+  .m .r .pt{font-weight:800;min-width:22px;text-align:right}
+  .m .r.w .nm,.m .r.w .pt{color:var(--ok);font-weight:700}
+  .m .r.l{opacity:.55}
+  .m .r.bye .nm{color:var(--mut);font-style:italic}
+  .m .ft{font-size:10px;color:var(--mut);padding:3px 8px;background:#121b28}
+  .bronze{margin-top:18px}
+  .empty{padding:30px 16px;color:var(--mut)}
+  details{margin:8px 16px 30px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  summary{cursor:pointer;font-weight:700}
+  .adm{display:grid;gap:10px;margin-top:12px;max-width:520px}
+  .adm label{font-size:13px;color:var(--mut);display:grid;gap:4px}
+  .adm input,.adm select{padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--tx);font-size:15px}
+  .adm .row{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{border:0;border-radius:10px;padding:11px 14px;font-weight:700;font-size:14px;background:#2a3a50;color:var(--tx);cursor:pointer}
+  .btn.pri{background:var(--acc);color:#111}
+  .btn.dng{background:transparent;border:1px solid var(--err);color:var(--err)}
+  #admMsg{font-size:13px}
+  .hint{font-size:12px;color:var(--mut);line-height:1.5}
+  .pbtn{margin:6px 16px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .pbtn label{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:center}
+  .ptitle,.psign{display:none}
+  @media screen{ #semua{position:absolute;left:-20000px;top:0;width:1100px} }
+  body.semua .ptitle#pMain,body.semua #meta{display:none!important}
+  /* tata letak ringkas untuk cetak (dipakai juga saat mengukur skala) */
+  body.printing .rd{width:190px} body.printing .br{gap:14px}
+  body.printing .rd .col{gap:4px}
+  body.printing .m{font-size:10px;border-radius:5px}
+  body.printing .m .r{padding:2px 6px;grid-template-columns:16px 1fr auto;gap:4px}
+  body.printing .m .r .nm small{display:none}
+  body.printing .m .ft{display:none}
+  body.printing .bronze{margin-top:10px}
+  @page{size:A4 landscape;margin:8mm}
+  @media print{
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    details,.tabs,.sub,.pbtn,header{display:none!important}
+    body{background:#fff;color:#000}
+    .ptitle{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding:0 0 2mm;margin-bottom:3mm}
+    .ptitle b{font-size:15pt} .ptitle span{font-size:9pt;color:#444;text-align:right}
+    .ptitle span b{display:block;font-size:14pt;color:#000}
+    .meta{color:#444;padding:0;font-size:9pt}
+    .wrap{overflow:visible;padding:3mm 0 0}
+    .m{border-color:#888;background:#fff;color:#000;break-inside:avoid}
+    .m .r + .r{border-top-color:#bbb}
+    .m .ft{background:#f1f1f1;color:#444}
+    .m .r .nm small,.m .r .sd{color:#555}
+    .m .r.w .nm,.m .r.w .pt{color:#000;font-weight:800}
+    .m .r.l{opacity:.6}
+    .m.live{border-color:#888}
+    .rd h3{color:#000;margin-bottom:4px}
+    .psign{display:grid;grid-template-columns:1fr 1fr;gap:30mm;margin-top:6mm;font-size:9pt;text-align:center;page-break-inside:avoid}
+    .psign div{border-top:1px solid #000;padding-top:1mm;margin-top:12mm}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="judul">Bracket Eliminasi</h1>
+  <div class="sub"><span class="dot"></span><span id="waktu">Memuat…</span></div>
+</header>
+<nav class="tabs" id="tabs"></nav>
+<div class="pbtn">
+  <button class="btn pri" id="btnCetak">🖨 Cetak bracket / Simpan PDF</button>
+  <label><input type="checkbox" id="cSemua"> Semua kategori (1 halaman per kategori)</label>
+</div>
+<div class="ptitle" id="pMain"><b id="pEv"></b><span>Bracket Eliminasi<b id="pKat"></b></span></div>
+<div class="meta" id="meta"></div>
+<div class="wrap"><div id="isi" class="empty">Memuat data…</div></div>
+<div class="psign" id="psign"><div>Direktur Pertandingan</div><div>Ketua Juri</div></div>
+<div id="semua"></div>
+
+<details id="admin">
+  <summary>⚙ Atur bracket (panitia)</summary>
+  <div class="adm">
+    <label>PIN petugas <input id="aPin" type="password" inputmode="numeric"></label>
+    <label>Kategori <select id="aKat"></select></label>
+    <label>Mulai dari babak
+      <select id="aBabak">
+        <option value="1/32">1/32 — 64 pemanah</option>
+        <option value="1/16">1/16 — 32 pemanah</option>
+        <option value="1/8">1/8 — 16 pemanah</option>
+        <option value="1/4">1/4 — 8 pemanah</option>
+        <option value="1/2">1/2 (semifinal) — 4 pemanah</option>
+      </select>
+    </label>
+    <div class="hint" id="aHint"></div>
+    <div class="row">
+      <button class="btn pri" id="aBuat">Buat bracket</button>
+      <button class="btn dng" id="aHapus">Hapus bracket</button>
+    </div>
+    <div id="admMsg"></div>
+    <div class="hint">Seeding mengikuti peringkat kualifikasi dengan pola World Archery (1 vs 16, 8 vs 9, 4 vs 13, …). Jika pemanah lebih sedikit dari ukuran bracket, unggulan teratas mendapat <b>bye</b>. Membuat ulang bracket akan <b>menghapus skor eliminasi</b> kategori itu.</div>
+  </div>
+</details>
+
+<script>
+/* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
+/* ================================================================== */
+var DATA = null, KAT = null;
+var $ = function(id){ return document.getElementById(id); };
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function savedCfg(){ try { return JSON.parse(localStorage.getItem('cfg') || '{}'); } catch(e){ return {}; } }
+function apiUrl(){
+  var q = new URLSearchParams(location.search).get('api');
+  if (q) return q;
+  if (/^https:\/\/script\.google/.test(API_URL)) return API_URL;
+  return savedCfg().api || '';
+}
+var UKURAN = { '1/32': 64, '1/16': 32, '1/8': 16, '1/4': 8, '1/2': 4 };
+var NAMA = { 64: '1/32', 32: '1/16', 16: '1/8', 8: '1/4', 4: 'Semifinal', 2: 'Final', 1: 'Perunggu' };
+
+function muat(){
+  if (!apiUrl()) { $('waktu').textContent = 'URL Web App belum diisi di bracket.html (API_URL).'; return; }
+  fetch(apiUrl() + '?action=eliminasi', {redirect:'follow'}).then(function(r){ return r.json(); }).then(function(j){
+    if (!j.ok) throw new Error(j.error || 'Gagal');
+    DATA = j; render(); isiAdmin();
+    $('waktu').textContent = 'Live · diperbarui ' + new Date().toLocaleTimeString('id-ID');
+  }).catch(function(e){ $('waktu').textContent = 'Gagal memuat, mencoba lagi… (' + e.message + ')'; });
+}
+
+function kotak(m){
+  if (!m) return '';
+  var baris = function(p, side){
+    var w = m.pemenang === side, l = m.pemenang && !w;
+    var main = (m.skorA && m.skorA.length) || (m.skorB && m.skorB.length);
+    var pt = p && main ? (side === 'A' ? m.poinA : m.poinB) : '';
+    if (!p) {
+      var bye = m.pemenang && m.pemenang !== side;
+      return '<div class="r ' + (bye ? 'bye' : '') + '"><span class="sd"></span><span class="nm">' + (bye ? 'bye' : '—') + '</span><span class="pt"></span></div>';
+    }
+    return '<div class="r' + (w ? ' w' : '') + (l ? ' l' : '') + '"><span class="sd">' + esc(p.seed) + '</span><span class="nm">' + esc(p.nama) + '<small>' + esc(p.klub) + '</small></span><span class="pt">' + esc(pt) + '</span></div>';
+  };
+  var so = m.soA && m.soB ? 'SO ' + esc(m.soA) + '–' + esc(m.soB) + (m.soCloser ? ' (lebih dekat)' : '') : '';
+  var live = m.a && m.b && !m.pemenang;
+  return '<div class="m' + (live ? ' live' : '') + '">' + baris(m.a, 'A') + baris(m.b, 'B') +
+    ((m.bantalan || so || live) ? '<div class="ft">' + [live ? '● berlangsung / menunggu' : '', m.bantalan ? 'Bantalan ' + esc(m.bantalan) : '', so].filter(Boolean).join(' · ') + '</div>' : '') + '</div>';
+}
+
+function render(){
+  if (!DATA) return;
+  $('judul').textContent = DATA.namaLomba + ' — Eliminasi';
+  var kats = DATA.kategori.filter(function(k){ return k.punyaBracket; });
+  if (!kats.length) { $('tabs').innerHTML = ''; $('meta').textContent = ''; $('isi').className = 'empty'; $('isi').textContent = 'Belum ada bracket. Panitia dapat membuatnya lewat "Atur bracket" di bawah.'; return; }
+  if (!KAT || !kats.some(function(k){ return k.kategori === KAT; })) KAT = kats[0].kategori;
+  $('tabs').innerHTML = kats.map(function(k){ return '<button class="tab' + (k.kategori === KAT ? ' on' : '') + '" data-k="' + esc(k.kategori) + '">' + esc(k.kategori) + '</button>'; }).join('');
+  var info = kats.filter(function(k){ return k.kategori === KAT; })[0];
+  $('pEv').textContent = DATA.namaLomba; $('pKat').textContent = KAT;
+  $('meta').textContent = 'Mulai babak ' + info.babakAwal + ' · ' + (info.sistem === 'SET' ? 'sistem set (menang 6 poin)' : 'sistem kumulatif (5 rambahan × 3 anak panah)');
+  var ms = DATA.matches.filter(function(m){ return m.kategori === KAT; });
+  var ukuran = ms.map(function(m){ return m.ukuran; }).filter(function(u, i, a){ return u > 1 && a.indexOf(u) === i; }).sort(function(a, b){ return b - a; });
+  var html = '<div class="br">';
+  ukuran.forEach(function(u){
+    var list = ms.filter(function(m){ return m.ukuran === u; }).sort(function(a, b){ return a.no - b.no; });
+    html += '<div class="rd"><h3>' + NAMA[u] + '</h3><div class="col">' + list.map(kotak).join('') + '</div>';
+    if (u === 2) {
+      var br = ms.filter(function(m){ return m.ukuran === 1; })[0];
+      if (br) html += '<div class="bronze"><h3>Perunggu</h3>' + kotak(br) + '</div>';
+    }
+    html += '</div>';
+  });
+  $('isi').className = ''; $('isi').innerHTML = html + '</div>';
+}
+
+/* ---------- panel panitia ---------- */
+function isiAdmin(){
+  var sel = $('aKat').value;
+  $('aKat').innerHTML = DATA.kategori.map(function(k){
+    return '<option value="' + esc(k.kategori) + '">' + esc(k.kategori) + ' — ' + k.jumlah + ' pemanah' + (k.punyaBracket ? ' (bracket ' + k.babakAwal + ')' : '') + '</option>';
+  }).join('');
+  if (sel) $('aKat').value = sel; else if (KAT) $('aKat').value = KAT;
+  saran();
+}
+function saran(){
+  var k = DATA && DATA.kategori.filter(function(x){ return x.kategori === $('aKat').value; })[0];
+  if (!k) return;
+  var pilih = '1/2'; ['1/2','1/4','1/8','1/16','1/32'].some(function(b){ pilih = b; return UKURAN[b] >= k.jumlah; });
+  var u = UKURAN[$('aBabak').value];
+  $('aHint').innerHTML = k.jumlah + ' pemanah punya skor kualifikasi. Saran: mulai <b>' + pilih + '</b>. ' +
+    (k.jumlah > u ? 'Dengan ' + $('aBabak').value + ', hanya <b>' + u + ' teratas</b> yang lolos.' : (u - k.jumlah) + ' kursi kosong → bye untuk unggulan teratas.') +
+    ' Sistem: <b>' + (k.sistem === 'SET' ? 'set' : 'kumulatif') + '</b>.';
+}
+function kirim(body){
+  body.pin = $('aPin').value.trim();
+  $('admMsg').textContent = 'Memproses…';
+  return fetch(apiUrl(), { method:'POST', redirect:'follow', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body) })
+    .then(function(r){ return r.json(); }).then(function(j){ if (!j.ok) throw new Error(j.error || 'Gagal'); return j; });
+}
+$('aKat').onchange = saran; $('aBabak').onchange = saran;
+$('aBuat').onclick = function(){
+  var k = $('aKat').value, b = $('aBabak').value;
+  var ada = DATA.kategori.some(function(x){ return x.kategori === k && x.punyaBracket; });
+  if (ada && !confirm('Bracket ' + k + ' sudah ada. Buat ulang? Semua skor eliminasi kategori ini akan dihapus.')) return;
+  kirim({ action: 'buatBracket', kategori: k, babak: b }).then(function(j){
+    $('admMsg').textContent = '✓ Bracket dibuat: ' + j.lolos + ' pemanah lolos.'; KAT = k; muat();
+  }).catch(function(e){ $('admMsg').textContent = '✗ ' + e.message; });
+};
+$('aHapus').onclick = function(){
+  var k = $('aKat').value;
+  if (!confirm('Hapus bracket ' + k + ' beserta semua skor eliminasinya?')) return;
+  kirim({ action: 'hapusBracket', kategori: k }).then(function(){ $('admMsg').textContent = '✓ Bracket dihapus.'; muat(); })
+    .catch(function(e){ $('admMsg').textContent = '✗ ' + e.message; });
+};
+$('tabs').onclick = function(e){ var b = e.target.closest('.tab'); if (b) { KAT = b.dataset.k; render(); } };
+$('aPin').value = savedCfg().pin || '';
+/* ---------- cetak ---------- */
+function bracketHtml(kat){
+  var ms = DATA.matches.filter(function(m){ return m.kategori === kat; });
+  var ukuran = ms.map(function(m){ return m.ukuran; }).filter(function(u, i, a){ return u > 1 && a.indexOf(u) === i; }).sort(function(a, b){ return b - a; });
+  var html = '<div class="br">';
+  ukuran.forEach(function(u){
+    var list = ms.filter(function(m){ return m.ukuran === u; }).sort(function(a, b){ return a.no - b.no; });
+    html += '<div class="rd"><h3>' + NAMA[u] + '</h3><div class="col">' + list.map(kotak).join('') + '</div>';
+    if (u === 2) { var br = ms.filter(function(m){ return m.ukuran === 1; })[0]; if (br) html += '<div class="bronze"><h3>Perunggu</h3>' + kotak(br) + '</div>'; }
+    html += '</div>';
+  });
+  return html + '</div>';
+}
+// skala otomatis agar bracket muat dalam 1 halaman A4 landscape (±1060 × 640 px area isi)
+function pasSkala(root){
+  root.querySelectorAll('.br').forEach(function(b){
+    b.style.zoom = '';
+    var w = b.scrollWidth, h = b.scrollHeight;
+    // muat 1 halaman; untuk bracket sangat besar (1/32) skala minimal 0.5 lalu boleh lanjut ke halaman berikutnya
+    var s = Math.max(0.5, Math.min(1, 1050 / w, 560 / h));
+    b.style.zoom = s;
+  });
+}
+function siapCetak(){
+  var semua = $('cSemua').checked;
+  document.body.classList.add('printing');
+  document.body.classList.toggle('semua', semua);
+  $('isi').parentNode.style.display = semua ? 'none' : ''; $('psign').style.display = semua ? 'none' : '';
+  if (semua) {
+    var kats = DATA.kategori.filter(function(k){ return k.punyaBracket; });
+    $('semua').innerHTML = kats.map(function(k, i){
+      return '<section style="' + (i ? 'page-break-before:always;break-before:page;' : '') + '">' +
+        '<div class="ptitle" style="display:flex"><b>' + esc(DATA.namaLomba) + '</b><span>Bracket Eliminasi<b>' + esc(k.kategori) + '</b></span></div>' +
+        '<div class="meta">Mulai babak ' + esc(k.babakAwal) + ' · ' + (k.sistem === 'SET' ? 'sistem set' : 'sistem kumulatif') + '</div>' +
+        '<div class="wrap"><div>' + bracketHtml(k.kategori) + '</div></div>' +
+        '<div class="psign" style="display:grid"><div>Direktur Pertandingan</div><div>Ketua Juri</div></div></section>';
+    }).join('');
+    pasSkala($('semua'));
+  } else { $('semua').innerHTML = ''; pasSkala($('isi')); }
+}
+function selesaiCetak(){
+  $('isi').parentNode.style.display = ''; $('psign').style.display = ''; $('semua').innerHTML = '';
+  document.body.classList.remove('semua'); document.body.classList.remove('printing');
+  document.querySelectorAll('#isi .br').forEach(function(b){ b.style.zoom = ''; });
+}
+window.addEventListener('beforeprint', siapCetak);
+window.addEventListener('afterprint', selesaiCetak);
+var CETAK = false;
+$('btnCetak').onclick = function(){ if (!DATA) return; CETAK = true; siapCetak(); setTimeout(function(){ window.print(); CETAK = false; }, 50); };
+muat(); setInterval(function(){ if (!CETAK) muat(); }, 15000);
+</script>
+</body>
+</html>

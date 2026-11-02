@@ -44,6 +44,7 @@
 <header>
   <h1 id="judul">Hasil Skor</h1>
   <div class="sub"><span class="dot"></span><span id="waktu">Memuat…</span></div>
+  <div style="margin-top:8px"><a href="bracket.html" style="color:#f5a524;font-weight:600;font-size:14px">⚔ Lihat bracket eliminasi →</a></div>
 </header>
 <div style="max-width:1100px;margin:auto"><input id="cari" placeholder="Cari nama / klub…"></div>
 <nav class="tabs" id="tabs"></nav>
@@ -90,7 +91,7 @@ function render(){
   document.getElementById('isi').innerHTML = '<table><thead>'+head+'</thead><tbody>'+(rows||'<tr><td colspan="'+cols+'" class="empty">Tidak ditemukan</td></tr>')+'</tbody></table>';
 }
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycbyJ-LUviC04OaN8h_pXol0YFVX2Yafjay6yySevoGZ1BOqKzzWmYzNrTG3q9yKQyusm1g/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 function apiUrl(){
   var q = new URLSearchParams(location.search).get('api');

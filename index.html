@@ -35,6 +35,7 @@
 <section id="vTargets" class="view" hidden>
   <p class="mut pad">Pilih bantalan yang kamu pegang</p>
   <div id="targetGrid" class="grid"></div>
+  <div class="pad"><button id="btnElim" class="btn pri">⚔ Babak Eliminasi / Aduan</button></div>
   <div class="pad row2" style="padding:12px 0">
     <a class="btn ghost" href="cetak.html" style="text-align:center;text-decoration:none">🖨 Cetak kartu skor / hasil</a>
     <a class="btn ghost" href="hasil.html" style="text-align:center;text-decoration:none">🏆 Hasil live</a>
@@ -49,6 +50,25 @@
   <div id="archerList" class="list"></div>
   <div class="foot">
     <button id="btnKirim" class="btn pri" disabled>Kirim End</button>
+  </div>
+</section>
+
+<!-- 5. ELIMINASI: daftar pertandingan -->
+<section id="vElim" class="view" hidden>
+  <div id="elKat" class="chips"></div>
+  <div id="elList" class="list"></div>
+  <div class="pad"><a class="btn ghost" href="bracket.html" style="display:block;text-align:center;text-decoration:none">🏆 Lihat bracket / atur bracket</a></div>
+</section>
+
+<!-- 6. ELIMINASI: input skor satu pertandingan -->
+<section id="vMatch" class="view" hidden>
+  <div id="mHead" class="mhead"></div>
+  <div id="mEnds" class="mends"></div>
+  <div id="mSO" class="mso" hidden></div>
+  <div id="mKeypad" class="keypad"></div>
+  <div class="row2">
+    <button id="mDel" class="btn ghost">⌫ Hapus</button>
+    <button id="mKirim" class="btn pri">Kirim skor</button>
   </div>
 </section>
 
@@ -78,5 +98,6 @@
 <div id="toast" class="toast" hidden></div>
 
 <script src="app.js"></script>
+<script src="elim.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 /* Service worker: simpan tampilan aplikasi agar tetap bisa dibuka tanpa sinyal */
-var CACHE = 'skor-panahan-v2-6';
-var FILES = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+var CACHE = 'skor-panahan-v3-1';
+var FILES = ['./', './index.html', './style.css', './app.js', './elim.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }));
   self.skipWaiting();
