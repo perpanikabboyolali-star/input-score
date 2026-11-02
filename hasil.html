@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hasil Skor Live</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root{--bg:#0f1724;--card:#17212f;--line:#263346;--tx:#e8edf4;--mut:#8b98ab;--acc:#f5a524;--gold:#f5c542;--silver:#c9d1db;--bronze:#d08a52}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+  header{padding:18px 16px 8px;max-width:1100px;margin:auto}
+  h1{margin:0;font-size:22px}
+  .sub{color:var(--mut);font-size:13px;margin-top:4px;display:flex;gap:8px;align-items:center}
+  .dot{width:8px;height:8px;border-radius:50%;background:#2ecc71;box-shadow:0 0 8px #2ecc71}
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 16px;max-width:1100px;margin:auto}
+  .tab{flex:none;border:1px solid var(--line);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:999px;font-size:14px;cursor:pointer}
+  .tab.on{background:var(--acc);color:#111;border-color:var(--acc);font-weight:600}
+  main{max-width:1100px;margin:auto;padding:0 16px 40px}
+  .wrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
+  table{width:100%;border-collapse:collapse;font-size:14px;min-width:520px}
+  th,td{padding:10px 8px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--mut);font-weight:500;font-size:12px;text-transform:uppercase;position:sticky;top:0;background:var(--card)}
+  td.nm{text-align:left;white-space:normal}
+  td.nm small{display:block;color:var(--mut)}
+  td.tot{font-weight:700;font-size:16px;color:var(--acc)}
+  .rk{display:inline-block;min-width:28px;padding:3px 0;border-radius:6px;font-weight:700}
+  .r1{background:var(--gold);color:#111}.r2{background:var(--silver);color:#111}.r3{background:var(--bronze);color:#111}
+  .e{color:var(--mut)} .e b{color:var(--tx);font-weight:500}
+  .empty{padding:30px;text-align:center;color:var(--mut)}
+  .tabs.ku{padding-top:0}
+  .tabs.ku .tab{padding:6px 12px;font-size:13px}
+  .tabs.ku .tab.on{background:#fff;border-color:#fff}
+  td.ses{font-weight:600}
+  tr.p{cursor:pointer}
+  tr.det td{background:#111a27;color:var(--mut);font-size:13px;text-align:left;white-space:normal}
+  tr.det b{color:var(--tx)}
+  .hint{color:var(--mut);font-size:12px;max-width:1100px;margin:8px auto 0;padding:0 16px}
+  @media (max-width:600px){table{min-width:0;font-size:13px} th,td{padding:8px 4px} th{font-size:11px} tr.p th:nth-child(3),tr.p td:nth-child(3),thead th:nth-child(3){display:none} td.tot{font-size:15px}}
+  input{width:100%;max-width:320px;margin:0 16px 10px;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--tx)}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="judul">Hasil Skor</h1>
+  <div class="sub"><span class="dot"></span><span id="waktu">Memuat…</span></div>
+</header>
+<div style="max-width:1100px;margin:auto"><input id="cari" placeholder="Cari nama / klub…"></div>
+<nav class="tabs" id="tabs"></nav>
+<nav class="tabs ku" id="tabsKu"></nav>
+<main><div class="wrap" id="isi"><div class="empty">Memuat data…</div></div><p class="hint">Ketuk baris untuk melihat skor per rambahan. Penentu seri: Total → 10+X → X.</p></main>
+
+<script>
+var DATA = null, DIV = null, KU = null, BUKA = {};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function uniq(a){return a.filter(function(v,i){return a.indexOf(v)===i})}
+function render(){
+  if(!DATA) return;
+  document.getElementById('judul').textContent = DATA.namaLomba;
+  var divs = uniq(DATA.data.map(function(k){return k.divisi}));
+  if(divs.indexOf(DIV)<0) DIV = divs[0];
+  var kus = uniq(DATA.data.filter(function(k){return k.divisi===DIV}).map(function(k){return k.sub}));
+  if(kus.indexOf(KU)<0) KU = kus[0];
+  document.getElementById('tabs').innerHTML = divs.map(function(d){
+    return '<button class="tab'+(d===DIV?' on':'')+'" data-d="'+esc(d)+'">'+esc(d||'UMUM')+'</button>';}).join('');
+  document.getElementById('tabsKu').innerHTML = kus.map(function(k){
+    return '<button class="tab'+(k===KU?' on':'')+'" data-u="'+esc(k)+'">'+esc(k||'Semua umur')+'</button>';}).join('');
+  var grp = DATA.data.filter(function(k){return k.divisi===DIV && k.sub===KU})[0];
+  if(!grp){document.getElementById('isi').innerHTML='<div class="empty">Belum ada peserta.</div>';return;}
+  var q = document.getElementById('cari').value.toLowerCase();
+  var nS = DATA.jumlahSesi, eps = DATA.endPerSesi;
+  var head = '<tr><th>#</th><th style="text-align:left">Nama</th><th>Bant.</th>';
+  for(var i=1;i<=nS;i++) head += '<th>Sesi '+i+'</th>';
+  head += '<th>Total</th><th>10+X</th><th>X</th></tr>';
+  var cols = 6 + nS;
+  var rows = grp.peserta.filter(function(p){return !q || (p.nama+' '+p.klub).toLowerCase().indexOf(q)>=0}).map(function(p){
+    var cls = p.rank<=3 && p.total>0 ? ' r'+p.rank : '';
+    var ses = p.sesi.map(function(v){return '<td class="ses">'+(v===null?'–':v)+'</td>'}).join('');
+    var tr = '<tr class="p" data-id="'+esc(p.id)+'"><td><span class="rk'+cls+'">'+p.rank+'</span></td><td class="nm">'+esc(p.nama)+'<small>'+esc(p.klub)+'</small></td><td>'+esc(p.bantalan)+'</td>'+ses+
+      '<td class="tot">'+p.total+'</td><td>'+p.sepuluh+'</td><td>'+p.x+'</td></tr>';
+    if(BUKA[p.id]){
+      var d = '';
+      for(var s=0;s<nS;s++){
+        d += 'Sesi '+(s+1)+': '+p.ends.slice(s*eps,(s+1)*eps).map(function(v,j){return 'E'+(j+1)+' <b>'+(v===null?'–':v)+'</b>'}).join(' · ')+'<br>';
+      }
+      tr += '<tr class="det"><td colspan="'+cols+'">'+d+'</td></tr>';
+    }
+    return tr;
+  }).join('');
+  document.getElementById('isi').innerHTML = '<table><thead>'+head+'</thead><tbody>'+(rows||'<tr><td colspan="'+cols+'" class="empty">Tidak ditemukan</td></tr>')+'</tbody></table>';
+}
+/* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
+/* ================================================================== */
+function apiUrl(){
+  var q = new URLSearchParams(location.search).get('api');
+  if (q) return q;
+  if (/^https:\/\/script\.google/.test(API_URL)) return API_URL;
+  try { var c = JSON.parse(localStorage.getItem('cfg')||'{}'); if (c.api) return c.api; } catch(e){}
+  return '';
+}
+function muat(){
+  var u = apiUrl();
+  if(!u){ document.getElementById('waktu').textContent = 'URL Web App belum diisi di hasil.html (API_URL).'; return; }
+  fetch(u + '?action=hasil', {redirect:'follow'}).then(function(r){return r.json()}).then(function(j){
+    if(!j.ok) throw new Error(j.error||'Gagal');
+    DATA = j; render();
+    document.getElementById('waktu').textContent = 'Live · diperbarui '+new Date().toLocaleTimeString('id-ID');
+  }).catch(function(e){
+    document.getElementById('waktu').textContent = 'Gagal memuat, mencoba lagi… ('+e.message+')';
+  });
+}
+document.getElementById('tabs').addEventListener('click',function(e){var b=e.target.closest('.tab'); if(b){DIV=b.dataset.d; KU=null; render();}});
+document.getElementById('tabsKu').addEventListener('click',function(e){var b=e.target.closest('.tab'); if(b){KU=b.dataset.u; render();}});
+document.getElementById('isi').addEventListener('click',function(e){var r=e.target.closest('tr.p'); if(r){BUKA[r.dataset.id]=!BUKA[r.dataset.id]; render();}});
+document.getElementById('cari').addEventListener('input',render);
+muat(); setInterval(muat, 15000);
+</script>
+</body>
+</html>
