@@ -98,7 +98,7 @@
     S.view = view;
     $('btnBack').hidden = (view === 'vSetup' || view === 'vTargets');
     var t = meta.namaLomba, sub = '';
-    if (view === 'vTarget' || view === 'vEntry') { t = 'Bantalan ' + S.bantalan; sub = labelEnd(S.end); }
+    if (view === 'vTarget' || view === 'vEntry') { t = 'Bantalan ' + S.bantalan + (GEL ? ' · ' + GEL : ''); sub = labelEnd(S.end); }
     if (view === 'vTargets') sub = cfg.dev || '';
     $('hTitle').textContent = t; $('hSub').textContent = sub;
     window.scrollTo(0, 0);
@@ -129,8 +129,16 @@
   $('btnUbahSetup').onclick = function () { show('vSetup'); };
 
   /* ---------- 2. Pilih bantalan ---------- */
+  var GEL = load('gel', '');
   function renderTargets(list) {
-    $('targetGrid').innerHTML = (list || []).map(function (t) {
+    list = list || [];
+    var gels = []; list.forEach(function (t) { if (t.gelombang && gels.indexOf(t.gelombang) < 0) gels.push(t.gelombang); });
+    if (gels.length && gels.indexOf(GEL) < 0) { GEL = gels[0]; save('gel', GEL); }
+    if (!gels.length) GEL = '';
+    $('gelTabs').hidden = !gels.length;
+    $('gelTabs').innerHTML = gels.map(function (g) { return '<button class="seg' + (g === GEL ? ' on' : '') + '" data-g="' + esc(g) + '">' + esc(g) + '</button>'; }).join('');
+    list = list.filter(function (t) { return !gels.length || (t.gelombang || '') === GEL; });
+    $('targetGrid').innerHTML = list.map(function (t) {
       return '<button class="tgt" data-b="' + esc(t.bantalan) + '"><b>' + esc(t.bantalan) + '</b><span>' + t.jumlah + ' pemanah</span></button>';
     }).join('') || '<p class="mut">Belum ada peserta di sheet.</p>';
   }
@@ -144,6 +152,10 @@
     }).catch(function () {});
     apiGet({ action: 'bantalan', pin: cfg.pin }).then(function (j) { save('targets', j.data); renderTargets(j.data); }).catch(function () {});
   }
+  $('gelTabs').onclick = function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    GEL = b.dataset.g; save('gel', GEL); renderTargets(load('targets', []));
+  };
   $('targetGrid').onclick = function (e) {
     var b = e.target.closest('.tgt'); if (!b) return;
     openTarget(b.dataset.b);
@@ -152,15 +164,15 @@
   /* ---------- 3. Bantalan ---------- */
   function openTarget(b) {
     S.bantalan = b; save('lastTarget', b);
-    S.archers = load('arch_' + b, []);
+    S.archers = load('arch_' + GEL + '_' + b, []);
     S.end = firstOpenEnd();
     renderTarget(); show('vTarget');
     refreshArchers();
   }
   function refreshArchers() {
     if (!navigator.onLine) return Promise.resolve();
-    return apiGet({ action: 'peserta', bantalan: S.bantalan, pin: cfg.pin }).then(function (j) {
-      S.archers = j.data; save('arch_' + S.bantalan, j.data);
+    return apiGet({ action: 'peserta', bantalan: S.bantalan, gelombang: GEL, pin: cfg.pin }).then(function (j) {
+      S.archers = j.data; save('arch_' + GEL + '_' + S.bantalan, j.data);
       if (S.view === 'vTarget') renderTarget();
     }).catch(function (e) { toast('Pakai data tersimpan (' + e.message + ')'); });
   }
