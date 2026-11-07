@@ -99,6 +99,7 @@
   </div>
   <label id="lKat" hidden>Kategori <select id="fKat"><option value="">Semua</option></select></label>
   <label id="lSesi">Sesi <select id="fSesi"></select></label>
+  <label id="lGel" hidden>Gelombang <select id="fGel"><option value="">Semua</option></select></label>
   <label id="lBant">Bantalan <select id="fBant"><option value="">Semua</option></select></label>
   <label id="lKosong"><input type="checkbox" id="fKosong"> Kartu kosong</label>
   <label id="lBrk" hidden><input type="checkbox" id="fBrk" checked> 1 kategori per halaman</label>
@@ -113,7 +114,7 @@
 <script src="admin-auth.js"></script>
 <script>
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycby8NxBvkBGVCFVEb47rhzRscLnEbdFuKm8mmAEfR2ajyUaiK4Mf26V7TspkIipCHY_F6A/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 var MODE = 'kartu', KARTU = null, HASIL = null, ELIM = null;
 var $ = function(id){ return document.getElementById(id); };
@@ -150,7 +151,12 @@ function isiFilter(){
   var kats = MODE === 'elim' ? (ELIM ? ELIM.kategori.filter(function(k){ return k.punyaBracket; }).map(function(k){ return k.kategori; }) : [])
                              : HASIL.data.map(function(k){ return k.kategori; });
   $('fKat').innerHTML = '<option value="">Semua</option>' + kats.map(function(k){ return '<option>' + esc(k) + '</option>'; }).join('');
+  var gel = $('fGel').value, gels = [];
+  KARTU.data.forEach(function(p){ if (p.gelombang && gels.indexOf(p.gelombang) < 0) gels.push(p.gelombang); });
+  $('fGel').innerHTML = '<option value="">Semua</option>' + gels.map(function(g){ return '<option>' + esc(g) + '</option>'; }).join('');
+  $('fGel').value = gels.indexOf(gel) >= 0 ? gel : '';
   var bans = []; KARTU.data.forEach(function(p){ if (bans.indexOf(p.bantalan) < 0) bans.push(p.bantalan); });
+  bans.sort(function(a, b){ return Number(a) - Number(b) || String(a).localeCompare(b); });
   $('fBant').innerHTML = '<option value="">Semua</option>' + bans.map(function(b){ return '<option>' + esc(b) + '</option>'; }).join('');
   $('fKat').value = kats.indexOf(kat) >= 0 ? kat : '';
   $('fBant').value = bans.indexOf(ban) >= 0 ? ban : '';
@@ -194,7 +200,7 @@ function lembarBantalan(list, cfg, sesi, kosong){
   var n = Math.max(3, list.length);
   return '<div class="page"><div class="sh-head"><div><div class="ev">' + esc(cfg.namaLomba) + '</div>' +
       '<div class="sub">' + [cfg.penyelenggara, cfg.tempatTanggal].filter(Boolean).map(esc).join('<br>') + '</div></div>' +
-      '<div class="tg">Bantalan<b>' + esc(list[0].bantalan) + '</b>' + (cfg.jumlahSesi > 1 ? 'Sesi ' + sesi : '') + '</div></div>' +
+      '<div class="tg">Bantalan<b>' + esc(list[0].bantalan) + '</b>' + [list[0].gelombang ? esc(list[0].gelombang) : '', cfg.jumlahSesi > 1 ? 'Sesi ' + sesi : ''].filter(Boolean).join(' · ') + '</div></div>' +
     '<div class="cols" style="--n:' + n + '">' + list.map(function(p){ return kolomPemanah(p, cfg, sesi, kosong); }).join('') + '</div>' +
     '<div class="foot"><span>Face 10-ring: X,10–1,M · Face 6-ring (Compound/Nasional): X,10–5,M · X dihitung 10</span><span>Dicetak ' + waktuCetak() + '</span></div></div>';
 }
@@ -202,7 +208,12 @@ function renderKartu(){
   var ban = $('fBant').value, kosong = $('fKosong').checked, fs = $('fSesi').value;
   var sesiList = []; for (var s = 1; s <= KARTU.jumlahSesi; s++) if (!fs || String(s) === fs) sesiList.push(s);
   var grup = {}, urut = [];
-  KARTU.data.forEach(function(p){ if (ban && p.bantalan !== ban) return; if (!grup[p.bantalan]) { grup[p.bantalan] = []; urut.push(p.bantalan); } grup[p.bantalan].push(p); });
+  var gel = $('fGel').value;
+  KARTU.data.forEach(function(p){
+    if (ban && p.bantalan !== ban) return; if (gel && (p.gelombang || '') !== gel) return;
+    var k = (p.gelombang || '') + '|' + p.bantalan;
+    if (!grup[k]) { grup[k] = []; urut.push(k); } grup[k].push(p);
+  });
   if (!urut.length) return '<div class="page"><p>Tidak ada pemanah untuk filter ini.</p></div>';
   var html = '';
   urut.forEach(function(b){
@@ -293,7 +304,7 @@ function renderElim(){
 function render(){
   if (!KARTU) return;
   var k = MODE === 'kartu';
-  $('lBant').hidden = !k; $('lSesi').hidden = !k; $('lKosong').hidden = !k; $('lBrk').hidden = k; $('lKat').hidden = k;
+  $('lBant').hidden = !k; $('lGel').hidden = !k || $('fGel').options.length < 2; $('lSesi').hidden = !k; $('lKosong').hidden = !k; $('lBrk').hidden = k; $('lKat').hidden = k;
   document.body.classList.toggle('land', k);
   $('pg').textContent = k ? '@page{size:A4 landscape;margin:8mm}' : '@page{size:A4 portrait;margin:10mm}';
   $('out').innerHTML = MODE === 'kartu' ? renderKartu() : MODE === 'elim' ? renderElim() : renderHasil();
@@ -308,7 +319,7 @@ $('mode').onclick = function(e){
   if (KARTU) isiFilter();
   render();
 };
-['fKat','fBant','fSesi','fKosong','fBrk'].forEach(function(id){ $(id).onchange = render; });
+['fKat','fGel','fBant','fSesi','fKosong','fBrk'].forEach(function(id){ $(id).onchange = render; });
 $('btnMuat').onclick = muat;
 $('btnCetak').onclick = function(){ window.print(); };
 var qm = new URLSearchParams(location.search).get('mode');
