@@ -98,7 +98,7 @@
     S.view = view;
     $('btnBack').hidden = (view === 'vSetup' || view === 'vTargets');
     var t = meta.namaLomba, sub = '';
-    if (view === 'vTarget' || view === 'vEntry') { t = 'Bantalan ' + S.bantalan + (GEL ? ' · ' + GEL : ''); sub = labelEnd(S.end); }
+    if (view === 'vTarget' || view === 'vEntry') { t = 'Bantalan ' + S.bantalan + (!ACARA && GEL ? ' · ' + GEL : ''); sub = labelEnd(S.end); }
     if (view === 'vTargets') sub = cfg.dev || '';
     $('hTitle').textContent = t; $('hSub').textContent = sub;
     window.scrollTo(0, 0);
@@ -120,27 +120,53 @@
       meta = { namaLomba: j.namaLomba, jumlahSesi: j.jumlahSesi || 1, endPerSesi: j.endPerSesi || j.jumlahEnd,
         jumlahEnd: j.jumlahEnd, panahPerEnd: j.panahPerEnd };
       save('meta', meta);
-      return apiGet({ action: 'bantalan', pin: cfg.pin });
-    }).then(function (j) {
-      save('cfg', cfg); save('targets', j.data);
-      $('setupMsg').textContent = ''; show('vTargets'); renderTargets(j.data);
+      save('cfg', cfg);
+      return ambilBantalan();
+    }).then(function () {
+      $('setupMsg').textContent = ''; show('vTargets'); renderTargets(load('targets', []));
     }).catch(function (e) { $('setupMsg').textContent = 'Gagal: ' + e.message; });
   };
   $('btnUbahSetup').onclick = function () { show('vSetup'); };
 
   /* ---------- 2. Pilih bantalan ---------- */
-  var GEL = load('gel', '');
+  var GEL = load('gel', ''), ACARA = load('acara', '');
+  function kunci() { return ACARA ? 'ac:' + ACARA : GEL; }
+  function jamSekarang() { var d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  function berlangsung(a) { var n = jamSekarang(); return a.mulai && a.mulai <= n && (!a.selesai || n <= a.selesai); }
+  function acaraOtomatis(list) {   // acara yang sedang berjalan, atau yang berikutnya, atau yang terakhir
+    var n = jamSekarang();
+    for (var i = 0; i < list.length; i++) if (!list[i].selesai || n <= list[i].selesai) return list[i].id;
+    return list.length ? list[list.length - 1].id : '';
+  }
+  function ambilBantalan() {
+    return apiGet({ action: 'bantalan', pin: cfg.pin, acara: ACARA }).then(function (j) {
+      var list = j.acara || [];
+      save('acaraList', list); save('aktif', j.aktif || '');
+      if (list.length && !list.some(function (a) { return a.id === ACARA; })) { ACARA = acaraOtomatis(list); save('acara', ACARA); return ambilBantalan(); }
+      if (!list.length && ACARA) { ACARA = ''; save('acara', ''); }
+      save('targets', j.data);
+      if (S.view === 'vTargets') renderTargets(j.data);
+    });
+  }
   function renderTargets(list) {
     list = list || [];
+    var acts = load('acaraList', []);
+    $('acaraTabs').hidden = !acts.length;
+    $('acaraTabs').innerHTML = acts.length ? '<div class="mut" style="margin:0 0 6px">Acara hari ini — pilih yang sedang kamu catat:</div>' + acts.map(function (a) {
+      return '<button class="act' + (a.id === ACARA ? ' on' : '') + '" data-a="' + esc(a.id) + '"><span class="w">' + esc(a.mulai || '') + (a.selesai ? '–' + esc(a.selesai) : '') +
+        (berlangsung(a) ? ' <i>● berlangsung</i>' : '') + '</span><b>' + esc(a.acara) + '</b><small>' + esc(a.kategori || '') + '</small></button>';
+    }).join('') : '';
+    if (acts.length) list = list.map(function (t) { t = Object.assign({}, t); t.gelombang = ''; return t; });
     var gels = []; list.forEach(function (t) { if (t.gelombang && gels.indexOf(t.gelombang) < 0) gels.push(t.gelombang); });
     if (gels.length && gels.indexOf(GEL) < 0) { GEL = gels[0]; save('gel', GEL); }
     if (!gels.length) GEL = '';
     $('gelTabs').hidden = !gels.length;
     $('gelTabs').innerHTML = gels.map(function (g) { return '<button class="seg' + (g === GEL ? ' on' : '') + '" data-g="' + esc(g) + '">' + esc(g) + '</button>'; }).join('');
     list = list.filter(function (t) { return !gels.length || (t.gelombang || '') === GEL; });
+    var ak = load('aktif', ''); $('aktifInfo').hidden = !ak || acts.length > 0; $('aktifInfo').textContent = ak ? '📅 Input dibuka: ' + ak.replace(/^Jadwal hari ini: /, '') : '';
     $('targetGrid').innerHTML = list.map(function (t) {
       return '<button class="tgt" data-b="' + esc(t.bantalan) + '"><b>' + esc(t.bantalan) + '</b><span>' + t.jumlah + ' pemanah</span></button>';
-    }).join('') || '<p class="mut">Belum ada peserta di sheet.</p>';
+    }).join('') || '<p class="mut">Tidak ada bantalan yang dibuka untuk input saat ini.</p>';
   }
   function loadTargets() {
     renderTargets(load('targets', []));
@@ -150,8 +176,14 @@
         jumlahEnd: j.jumlahEnd, panahPerEnd: j.panahPerEnd };
       save('meta', meta); if (S.view === 'vTargets') $('hTitle').textContent = meta.namaLomba;
     }).catch(function () {});
-    apiGet({ action: 'bantalan', pin: cfg.pin }).then(function (j) { save('targets', j.data); renderTargets(j.data); }).catch(function () {});
+    ambilBantalan().catch(function () {});
   }
+  $('acaraTabs').onclick = function (e) {
+    var b = e.target.closest('.act'); if (!b) return;
+    ACARA = b.dataset.a; save('acara', ACARA);
+    renderTargets(load('targets', [])); $('targetGrid').innerHTML = '<p class="mut">Memuat…</p>';
+    ambilBantalan().catch(function (er) { toast('Gagal memuat: ' + er.message); });
+  };
   $('gelTabs').onclick = function (e) {
     var b = e.target.closest('button'); if (!b) return;
     GEL = b.dataset.g; save('gel', GEL); renderTargets(load('targets', []));
@@ -164,15 +196,17 @@
   /* ---------- 3. Bantalan ---------- */
   function openTarget(b) {
     S.bantalan = b; save('lastTarget', b);
-    S.archers = load('arch_' + GEL + '_' + b, []);
+    S.archers = load('arch_' + kunci() + '_' + b, []);
     S.end = firstOpenEnd();
     renderTarget(); show('vTarget');
     refreshArchers();
   }
   function refreshArchers() {
     if (!navigator.onLine) return Promise.resolve();
-    return apiGet({ action: 'peserta', bantalan: S.bantalan, gelombang: GEL, pin: cfg.pin }).then(function (j) {
-      S.archers = j.data; save('arch_' + GEL + '_' + S.bantalan, j.data);
+    var q = { action: 'peserta', bantalan: S.bantalan, pin: cfg.pin };
+    if (ACARA) q.acara = ACARA; else q.gelombang = GEL;
+    return apiGet(q).then(function (j) {
+      S.archers = j.data; save('arch_' + kunci() + '_' + S.bantalan, j.data);
       if (S.view === 'vTarget') renderTarget();
     }).catch(function (e) { toast('Pakai data tersimpan (' + e.message + ')'); });
   }
