@@ -12,6 +12,7 @@
   /* ---------- panel kontrol (tidak ikut tercetak) ---------- */
   .bar{position:sticky;top:0;z-index:5;background:#0f1724;color:#eef2f7;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
   .bar h1{font-size:17px;margin:0 12px 0 0}
+  [hidden]{display:none!important}
   .bar label{font-size:13px;display:flex;align-items:center;gap:6px}
   .bar select{padding:8px;border-radius:8px;border:1px solid #2a3a50;background:#17212f;color:#eef2f7;font-size:14px;max-width:220px}
   .seg{display:flex;background:#17212f;border-radius:10px;padding:3px}
@@ -114,7 +115,7 @@
 <script src="admin-auth.js"></script>
 <script>
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycby8WtcKLpsfBAHkWWEwSbAzo5dbTqE4ln-5DHHs9hNe-wSEIwUCf_ILKhkLlk2XAOojXw/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 var MODE = 'kartu', KARTU = null, HASIL = null, ELIM = null;
 var $ = function(id){ return document.getElementById(id); };
@@ -226,25 +227,42 @@ function renderKartu(){
 /* ---------- hasil per kategori ---------- */
 function renderHasil(){
   var kat = $('fKat').value, brk = $('fBrk').checked, nS = HASIL.jumlahSesi;
-  var grp = HASIL.data.filter(function(k){ return !kat || k.kategori === kat; });
-  if (!grp.length) return '<div class="page"><p>Tidak ada data.</p></div>';
+  var fs = Number($('fSesi').value) || 0, gel = $('fGel').value, eps = KARTU.endPerSesi;
+  var info = {}; KARTU.data.forEach(function(p){ info[p.id] = p; });
+  var sesiStat = function(p, s){   // total, 10+X, X untuk satu sesi dari data per rambahan
+    var k = info[p.id], t = 0, sp = 0, x = 0;
+    for (var e = (s - 1) * eps + 1; e <= s * eps; e++) { var en = k && k.skor && k.skor[e]; if (en) { t += Number(en.total) || 0; sp += Number(en.sepuluh) || 0; x += Number(en.x) || 0; } }
+    return { total: t, sepuluh: sp, x: x };
+  };
+  var grp = HASIL.data.filter(function(k){ return !kat || k.kategori === kat; }).map(function(g){
+    var list = g.peserta.filter(function(p){ return !gel || ((info[p.id] || {}).gelombang || '') === gel; }).map(function(p){
+      var st = fs ? sesiStat(p, fs) : { total: p.total, sepuluh: p.sepuluh, x: p.x };
+      return { p: p, total: st.total, sepuluh: st.sepuluh, x: st.x };
+    });
+    list.sort(function(a, b){ return b.total - a.total || b.sepuluh - a.sepuluh || b.x - a.x || a.p.nama.localeCompare(b.p.nama); });
+    list.forEach(function(r, i){ var pv = list[i - 1]; r.rank = pv && pv.total === r.total && pv.sepuluh === r.sepuluh && pv.x === r.x ? pv.rank : i + 1; });
+    return { kategori: g.kategori, list: list };
+  }).filter(function(g){ return g.list.length; });
+  if (!grp.length) return '<div class="page"><p>Tidak ada data untuk filter ini.</p></div>';
+  var judul = 'Hasil Kualifikasi' + (fs && nS > 1 ? ' · Sesi ' + fs : '') + (gel ? ' · Gelombang ' + esc(gel) : '');
   var body = grp.map(function(g, gi){
     var head = '<tr><th>#</th><th class="l">Nama</th><th class="l">Klub</th><th>Bant.</th>';
-    for (var s = 1; s <= nS; s++) head += '<th>' + (nS > 1 ? 'Sesi ' + s : 'Skor') + '</th>';
-    head += '<th>Total</th><th>10+X</th><th>X</th></tr>';
-    var rows = g.peserta.map(function(p){
-      return '<tr><td class="t">' + p.rank + '</td><td class="l">' + esc(p.nama) + '</td><td class="l">' + esc(p.klub) + '</td><td>' + esc(p.bantalan) + '</td>' +
-        p.sesi.map(function(v){ return '<td>' + (v === null ? '–' : v) + '</td>'; }).join('') +
-        '<td class="t">' + p.total + '</td><td>' + p.sepuluh + '</td><td>' + p.x + '</td></tr>';
+    if (fs) head += '<th>' + (nS > 1 ? 'Sesi ' + fs : 'Skor') + '</th>';
+    else { for (var s = 1; s <= nS; s++) head += '<th>' + (nS > 1 ? 'Sesi ' + s : 'Skor') + '</th>'; head += '<th>Total</th>'; }
+    head += '<th>10+X</th><th>X</th></tr>';
+    var rows = g.list.map(function(r){
+      var p = r.p, cols = fs ? '<td class="t">' + r.total + '</td>'
+        : p.sesi.map(function(v){ return '<td>' + (v === null ? '–' : v) + '</td>'; }).join('') + '<td class="t">' + r.total + '</td>';
+      return '<tr><td class="t">' + r.rank + '</td><td class="l">' + esc(p.nama) + '</td><td class="l">' + esc(p.klub) + '</td><td>' + esc(p.bantalan) + '</td>' + cols + '<td>' + r.sepuluh + '</td><td>' + r.x + '</td></tr>';
     }).join('');
     return '<section class="rpage' + (brk && gi > 0 ? ' brk' : '') + '">' +
-      '<div class="rh"><div><div class="ev">' + esc(HASIL.namaLomba) + '</div><div class="sub">Hasil Kualifikasi · dicetak ' + waktuCetak() + '</div></div>' +
+      '<div class="rh"><div><div class="ev">' + esc(HASIL.namaLomba) + '</div><div class="sub">' + judul + ' · dicetak ' + waktuCetak() + '</div></div>' +
       '<div class="kat">Kategori<b>' + esc(g.kategori) + '</b></div></div>' +
       '<table class="rs"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table>' +
-      '<div class="rnote">Penentu peringkat: Total → jumlah 10+X → jumlah X. Peringkat sama = hasil identik.</div>' +
+      '<div class="rnote">Penentu peringkat: ' + (fs ? 'skor Sesi ' + fs : 'Total') + ' → jumlah 10+X → jumlah X. Peringkat sama = hasil identik.' +
+      (fs || gel ? ' Peringkat dihitung di antara peserta yang tercetak.' : '') + '</div>' +
     '</section>';
   }).join('');
-  // dengan "1 kategori per halaman", tiap kategori jadi halaman sendiri
   return '<div class="page">' + body + '</div>';
 }
 
@@ -304,12 +322,12 @@ function renderElim(){
 function render(){
   if (!KARTU) return;
   var k = MODE === 'kartu';
-  $('lBant').hidden = !k; $('lGel').hidden = !k || $('fGel').options.length < 2; $('lSesi').hidden = !k; $('lKosong').hidden = !k; $('lBrk').hidden = k; $('lKat').hidden = k;
+  var h = MODE === 'hasil'; $('lBant').hidden = !k; $('lGel').hidden = !(k || h) || $('fGel').options.length < 2; $('lSesi').hidden = !(k || h); $('lKosong').hidden = !k; $('lBrk').hidden = k; $('lKat').hidden = k;
   document.body.classList.toggle('land', k);
   $('pg').textContent = k ? '@page{size:A4 landscape;margin:8mm}' : '@page{size:A4 portrait;margin:10mm}';
   $('out').innerHTML = MODE === 'kartu' ? renderKartu() : MODE === 'elim' ? renderElim() : renderHasil();
   document.title = k ? 'Scoresheet' + ($('fBant').value ? ' Bantalan ' + $('fBant').value : '') + ($('fSesi').value ? ' Sesi ' + $('fSesi').value : '') + ' - ' + KARTU.namaLomba
-                     : (MODE === 'elim' ? 'Hasil Eliminasi' : 'Hasil Kualifikasi') + ($('fKat').value ? ' - ' + $('fKat').value : '') + ' - ' + KARTU.namaLomba;
+                     : (MODE === 'elim' ? 'Hasil Eliminasi' : 'Hasil Kualifikasi' + ($('fSesi').value ? ' Sesi ' + $('fSesi').value : '') + ($('fGel').value ? ' ' + $('fGel').value : '')) + ($('fKat').value ? ' - ' + $('fKat').value : '') + ' - ' + KARTU.namaLomba;
 }
 
 $('mode').onclick = function(e){
