@@ -45,6 +45,15 @@
   .jd .ji .w{color:var(--acc);font-weight:700;font-size:13px}
   .jd .ji b{display:block} .jd .ji small{color:var(--mut)}
   .jd.lalu{opacity:.55}
+  .jd .ji.klik{cursor:pointer} .jd .ji.klik:hover{background:#1b2738}
+  .jd .ji small{display:block}
+  .jd .lk{display:block;margin-top:4px;font-size:12px;color:var(--acc);font-weight:600}
+  .sl{padding:4px 12px 12px;border-top:1px dashed var(--line);background:#121b28}
+  .slh{font-size:12px;color:var(--mut);padding:6px 0}
+  .slb{display:grid;grid-template-columns:40px 1fr;gap:2px 10px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .slb .bn{grid-row:1/span 4;font-size:20px;font-weight:800;color:var(--acc);text-align:center}
+  .sp{display:grid;grid-template-columns:18px 1fr;column-gap:6px} .sp span{color:var(--mut);font-weight:700}
+  .sp small{grid-column:2;color:var(--mut);font-size:12px}
   .mode button{flex:1;border:0;background:none;color:var(--mut);padding:10px 6px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer}
   .mode button.on{background:var(--acc);color:#111}
   .pod{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}
@@ -116,6 +125,28 @@ function render(){
   document.getElementById('isi').innerHTML = '<table><thead>'+head+'</thead><tbody>'+(rows||'<tr><td colspan="'+cols+'" class="empty">Tidak ditemukan</td></tr>')+'</tbody></table>';
 }
 var MODE = location.hash === '#eliminasi' ? 'elim' : location.hash === '#jadwal' ? 'jadwal' : 'kual', DATAE = null, DATAJ = null;
+var SL = {}, SL_BUKA = {};
+function daftarSL(d){
+  if(!d.data.length) return '<div class="sl"><small>Belum ada peserta yang cocok untuk acara ini.</small></div>';
+  var html = '<div class="sl"><div class="slh">'+d.data.length+' peserta</div>', last = null;
+  d.data.forEach(function(p){
+    if(p.bantalan!==last){ if(last!==null) html += '</div>'; html += '<div class="slb"><div class="bn">'+esc(p.bantalan)+'</div>'; last = p.bantalan; }
+    html += '<div class="sp"><span>'+esc(p.posisi)+'</span><b>'+esc(p.nama)+'</b><small>'+esc(p.klub)+' · '+esc(p.kategori)+'</small></div>';
+  });
+  return html + '</div></div>';
+}
+document.getElementById('isiE').addEventListener('click',function(e){
+  if(MODE!=='jadwal') return;
+  var r = e.target.closest('.ji.klik'); if(!r) return;
+  var id = r.dataset.id, j = r.dataset.j;
+  if(j!=='KUALIFIKASI'){ MODE='elim'; DIV = r.dataset.d || DIV; KU = null; history.replaceState(null,'','#eliminasi'); tampil(); muat(); window.scrollTo(0,0); return; }
+  SL_BUKA[id] = !SL_BUKA[id]; renderJadwal();
+  if(SL_BUKA[id] && !SL[id]){
+    fetch(apiUrl()+'?action=startlist&acara='+encodeURIComponent(id),{redirect:'follow'}).then(function(x){return x.json()}).then(function(d){
+      if(!d.ok) throw new Error(d.error||'Gagal'); SL[id] = d; renderJadwal();
+    }).catch(function(er){ SL[id] = { data: [] }; SL_BUKA[id] = false; renderJadwal(); alert('Gagal memuat daftar peserta: '+er.message); });
+  }
+});
 function renderJadwal(){
   var box = document.getElementById('isiE');
   document.getElementById('tabs').innerHTML = ''; document.getElementById('tabsKu').innerHTML = '';
@@ -129,7 +160,12 @@ function renderJadwal(){
     var rows = items.filter(function(it){return it.tanggal===t});
     var nama = new Date(t+'T00:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
     return '<div class="jd'+(t<hariIni?' lalu':'')+'"><h3>Hari '+(i+1)+' · '+esc(nama)+(t===hariIni?'<span>HARI INI</span>':'')+'</h3>'+
-      (rows.map(function(it){ return '<div class="ji"><div class="w">'+esc(it.mulai||'')+(it.selesai?' – '+esc(it.selesai):'')+'</div><div><b>'+esc(it.acara)+'</b><small>'+esc([it.divisi,it.ket].filter(Boolean).join(' · '))+'</small></div></div>'; }).join('')||'<div class="ji"><div></div><div><small>Belum ada acara</small></div></div>')+'</div>';
+      (rows.map(function(it){
+        var bisa = it.jenis && it.jenis!=='LAIN', buka = SL_BUKA[it.id];
+        var aksi = !bisa ? '' : it.jenis==='KUALIFIKASI' ? '<span class="lk">'+(buka?'▲ Tutup':'👥 Lihat peserta & bantalan')+'</span>' : '<span class="lk">⚔ Lihat hasil eliminasi</span>';
+        var isi = buka ? (SL[it.id] ? daftarSL(SL[it.id]) : '<div class="sl"><small>Memuat…</small></div>') : '';
+        return '<div class="ji'+(bisa?' klik':'')+'" data-id="'+esc(it.id)+'" data-j="'+esc(it.jenis||'')+'" data-d="'+esc((it.divisi&&it.divisi[0])||'')+'"><div class="w">'+esc(it.mulai||'')+(it.selesai?' – '+esc(it.selesai):'')+'</div><div><b>'+esc(it.acara)+'</b><small>'+esc([it.kategoriTeks,it.ket].filter(Boolean).join(' · '))+'</small>'+aksi+'</div></div>'+isi;
+      }).join('')||'<div class="ji"><div></div><div><small>Belum ada acara</small></div></div>')+'</div>';
   }).join('');
 }
 function nmOrang(o){ return o ? esc(o.nama)+'<small>'+esc(o.klub)+'</small>' : '<i style="color:var(--mut)">'+'—'+'</i>'; }
@@ -184,7 +220,7 @@ function tampil(){
 }
 document.getElementById('mode').addEventListener('click',function(ev){ var b=ev.target.closest('button'); if(!b) return; MODE=b.dataset.m; history.replaceState(null,'',MODE==='elim'?'#eliminasi':MODE==='jadwal'?'#jadwal':'#'); KU=null; tampil(); muat(); });
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycbyOXg2x1ZjDrRZiev1Sw_JKZH9I_sWTyGOvYBtOso2BQ6Dt1V5BcDai7ATMCZOYecgF6Q/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 function apiUrl(){
   var q = new URLSearchParams(location.search).get('api');

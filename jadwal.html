@@ -21,14 +21,23 @@
   .day{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
   .day h2{margin:0;padding:10px 12px;font-size:16px;background:#1d2a3b;display:flex;justify-content:space-between;align-items:center}
   .day h2 small{color:var(--mut);font-weight:500;font-size:12px}
-  .it{display:grid;grid-template-columns:112px 112px 1.4fr 1fr 1.4fr 34px;gap:6px;padding:8px 12px;border-top:1px solid var(--line);align-items:center}
-  .it button{border:0;background:none;color:var(--bad);font-size:18px;cursor:pointer}
-  .head{color:var(--mut);font-size:11px;text-transform:uppercase;padding-bottom:0;border-top:0}
+  .it{padding:10px 12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+  .it .r1{display:grid;grid-template-columns:104px 104px 190px 1fr 36px;gap:6px;align-items:center}
+  .it .del{border:0;background:none;color:var(--bad);font-size:20px;cursor:pointer}
+  .it .r2{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+  .grp{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .grp > span{font-size:11px;color:var(--mut);margin-right:2px;min-width:52px}
+  .chip{border:1px solid var(--line);background:#0f1724;color:var(--mut);border-radius:999px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer}
+  .chip.on{background:#24486b;color:#fff;border-color:#3d79b0}
+  .it .r3{display:grid;grid-template-columns:200px 1fr auto;gap:6px;align-items:center}
+  .cnt{font-size:12px;color:#2ecc71;white-space:nowrap} .cnt.nol{color:var(--bad)}
+  .it.lain .r2,.it.lain .gelw{display:none}
   .add{padding:8px 12px 12px}
   #msg{min-height:1.2em;font-size:13px;margin-top:6px}
   .bar{position:sticky;bottom:0;background:var(--bg);padding:10px 0;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line)}
   @media (max-width:700px){
-    .it{grid-template-columns:1fr 1fr 34px} .it .acara,.it .div,.it .ket{grid-column:1/3} .head{display:none}
+    .it .r1{grid-template-columns:1fr 1fr 36px} .it .r1 .jenis,.it .r1 .acara{grid-column:1/3}
+    .it .r3{grid-template-columns:1fr}
   }
   /* ---------- cetak ---------- */
   #print{display:none}
@@ -54,6 +63,17 @@
     <button class="btn" id="btnTerap">Terapkan</button>
     <span class="mut" style="flex-basis:100%">Acara di hari yang dihapus (karena jumlah hari dikurangi) ikut terhapus saat disimpan.</span>
   </div>
+  <div class="top" id="boxInput" style="display:block">
+    <b style="font-size:15px">📱 Input scorer</b>
+    <div class="mut" style="margin:2px 0 8px">Atur divisi yang muncul di aplikasi scorer (kualifikasi & eliminasi). Status sekarang: <b id="aktifNow" style="color:var(--acc)">–</b></div>
+    <div style="display:flex;flex-direction:column;gap:8px;font-size:14px">
+      <label style="flex-direction:row;align-items:center;gap:8px;color:var(--tx);font-size:14px"><input type="radio" name="fi" value="JADWAL"> Ikut jadwal hari ini (otomatis; jika hari ini tidak ada jadwal, semua divisi dibuka)</label>
+      <label style="flex-direction:row;align-items:center;gap:8px;color:var(--tx);font-size:14px"><input type="radio" name="fi" value="SEMUA"> Semua divisi</label>
+      <label style="flex-direction:row;align-items:center;gap:8px;color:var(--tx);font-size:14px"><input type="radio" name="fi" value="MANUAL"> Pilih divisi:</label>
+      <div id="fiDiv" style="display:flex;flex-wrap:wrap;gap:12px;padding-left:26px"></div>
+      <div><button class="btn pri" id="btnInput">Simpan pengaturan input</button> <span id="msgInput" class="mut"></span></div>
+    </div>
+  </div>
   <div id="days"></div>
   <div class="bar">
     <button class="btn pri" id="btnSimpan">💾 Simpan jadwal</button>
@@ -70,12 +90,12 @@
   <option>Final Individu</option><option>Final Beregu</option><option>Final Mix Team</option>
   <option>Istirahat</option><option>Penyerahan Medali</option><option>Upacara Penutupan</option>
 </datalist>
-<datalist id="dlDiv"><option>Semua divisi</option><option>RECURVE</option><option>COMPOUND</option><option>NASIONAL</option><option>BAREBOW</option></datalist>
+
 
 <script src="admin-auth.js"></script>
 <script>
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycbyOXg2x1ZjDrRZiev1Sw_JKZH9I_sWTyGOvYBtOso2BQ6Dt1V5BcDai7ATMCZOYecgF6Q/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 var $ = function(id){ return document.getElementById(id); };
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -91,36 +111,96 @@ function tglKe(mulai, i){ var d = new Date(mulai + 'T00:00:00'); d.setDate(d.get
 function namaHari(t){ return new Date(t + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
 function hariList(){ var o = []; for (var i = 0; i < J.hari; i++) o.push(tglKe(J.mulai, i)); return o; }
 
+var DIVS = ['RECURVE','COMPOUND','NASIONAL','BAREBOW'], KUS = ['U10','U13','U15','U18'], GENS = [['M','Putra'],['W','Putri']];
+var JENIS = [['KUALIFIKASI','Kualifikasi'],['ELIM_IND','Eliminasi Individu'],['ELIM_BEREGU','Eliminasi Beregu'],['ELIM_MIX','Eliminasi Mix Team'],['LAIN','Acara lain (pembukaan, istirahat, dll.)']];
+var NAMA_JENIS = { KUALIFIKASI: 'Kualifikasi', ELIM_IND: 'Eliminasi Individu', ELIM_BEREGU: 'Eliminasi Beregu', ELIM_MIX: 'Eliminasi Mix Team', LAIN: '' };
+var GELS = [], RINGKAS = [];
+function ambilChip(r, g){ var on = Array.prototype.filter.call(r.querySelectorAll('.grp[data-g="' + g + '"] .chip.on'), function(){ return true; }).map(function(c){ return c.dataset.v; }); return on; }
 function bacaForm(){   // ambil isian dari layar ke J.items
   var items = [];
   document.querySelectorAll('.it[data-t]').forEach(function(r){
-    var g = function(c){ return r.querySelector('.' + c).value.trim(); };
-    items.push({ tanggal: r.dataset.t, mulai: g('mulai'), selesai: g('selesai'), acara: g('acara'), divisi: g('div'), ket: g('ket') });
+    var g = function(c){ var el = r.querySelector('.' + c); return el ? el.value.trim() : ''; };
+    items.push({ tanggal: r.dataset.t, mulai: g('mulai'), selesai: g('selesai'), jenis: g('jenis'), acara: g('acara'),
+      divisi: ambilChip(r, 'd'), ku: ambilChip(r, 'k'), gender: ambilChip(r, 'g'), gel: g('gel'), ket: g('ket') });
   });
   J.items = items;
+}
+function tKat(it){
+  if (it.jenis === 'LAIN') return '';
+  var all = function(a, n){ return !a || !a.length || a.length === n; };
+  var g = all(it.gender, 2) || it.jenis === 'ELIM_MIX' ? '' : (it.gender[0] === 'M' ? 'Putra' : 'Putri');
+  return [all(it.divisi, 4) ? 'Semua divisi' : it.divisi.join(', '), all(it.ku, 4) ? '' : it.ku.join(', '), g, it.gel ? 'Gel. ' + it.gel : ''].filter(Boolean).join(' · ');
+}
+function hitungPeserta(it){
+  if (it.jenis === 'LAIN') return null;
+  var all = function(a, n){ return !a || !a.length || a.length === n; };
+  return RINGKAS.filter(function(p){
+    return (all(it.divisi, 4) || it.divisi.indexOf(p[0]) >= 0) && (all(it.ku, 4) || it.ku.indexOf(p[1]) >= 0) &&
+      (it.jenis === 'ELIM_MIX' || all(it.gender, 2) || it.gender.indexOf(p[2]) >= 0) && (!it.gel || p[3] === it.gel);
+  }).length;
 }
 function render(){
   $('days').innerHTML = hariList().map(function(t, i){
     var rows = J.items.filter(function(it){ return it.tanggal === t; }).sort(function(a, b){ return (a.mulai || '').localeCompare(b.mulai || ''); });
     return '<div class="day"><h2>Hari ' + (i + 1) + ' · ' + esc(namaHari(t)) + ' <small>' + rows.length + ' acara</small></h2>' +
-      '<div class="it head"><span>Mulai</span><span>Selesai</span><span>Acara</span><span>Divisi</span><span>Keterangan</span><span></span></div>' +
       rows.map(baris(t)).join('') +
       '<div class="add"><button class="btn" data-add="' + t + '">+ Tambah acara</button></div></div>';
   }).join('');
+  document.querySelectorAll('.it[data-t]').forEach(segarkan);
+}
+function chips(g, list, pilih){
+  var semua = !pilih || !pilih.length;
+  return list.map(function(x){ var v = Array.isArray(x) ? x[0] : x, l = Array.isArray(x) ? x[1] : x;
+    return '<button type="button" class="chip' + (semua || pilih.indexOf(v) >= 0 ? ' on' : '') + '" data-v="' + v + '">' + l + '</button>'; }).join('');
 }
 function baris(t){
   return function(it){
-    it = it || {};
-    return '<div class="it" data-t="' + t + '"><input class="mulai" type="time" value="' + esc(it.mulai) + '"><input class="selesai" type="time" value="' + esc(it.selesai) + '">' +
-      '<input class="acara" list="dlAcara" placeholder="Acara (mis. Kualifikasi)" value="' + esc(it.acara) + '">' +
-      '<input class="div" list="dlDiv" placeholder="Divisi" value="' + esc(it.divisi) + '">' +
-      '<input class="ket" placeholder="Keterangan (mis. Gelombang Pagi, U13–U18)" value="' + esc(it.ket) + '"><button title="Hapus" data-del>✕</button></div>';
+    it = it || { jenis: 'KUALIFIKASI', acara: 'Kualifikasi' };
+    var jenis = it.jenis || 'LAIN';
+    return '<div class="it' + (jenis === 'LAIN' ? ' lain' : '') + '" data-t="' + t + '">' +
+      '<div class="r1"><input class="mulai" type="time" value="' + esc(it.mulai) + '" title="Jam mulai"><input class="selesai" type="time" value="' + esc(it.selesai) + '" title="Jam selesai">' +
+        '<select class="jenis">' + JENIS.map(function(j){ return '<option value="' + j[0] + '"' + (j[0] === jenis ? ' selected' : '') + '>' + j[1] + '</option>'; }).join('') + '</select>' +
+        '<input class="acara" placeholder="Nama acara" value="' + esc(it.acara) + '"><button class="del" title="Hapus acara" data-del>✕</button></div>' +
+      '<div class="r2">' +
+        '<div class="grp" data-g="d"><span>Divisi</span>' + chips('d', DIVS, it.divisi) + '</div>' +
+        '<div class="grp" data-g="k"><span>Umur</span>' + chips('k', KUS, it.ku) + '</div>' +
+        '<div class="grp gw" data-g="g"' + (jenis === 'ELIM_MIX' ? ' hidden' : '') + '><span>Gender</span>' + chips('g', GENS, it.gender) + '</div>' +
+      '</div>' +
+      '<div class="r3"><select class="gel gelw"' + (GELS.length ? '' : ' hidden') + '><option value="">Semua gelombang</option>' +
+        GELS.map(function(g){ return '<option' + (g === it.gel ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join('') + '</select>' +
+        '<input class="ket" placeholder="Keterangan (opsional)" value="' + esc(it.ket) + '"><span class="cnt"></span></div>' +
+    '</div>';
   };
+}
+function segarkan(r){
+  var jenis = r.querySelector('.jenis').value;
+  r.classList.toggle('lain', jenis === 'LAIN');
+  r.querySelector('.gw').hidden = jenis === 'ELIM_MIX';
+  var it = { jenis: jenis, divisi: ambilChip(r, 'd'), ku: ambilChip(r, 'k'), gender: ambilChip(r, 'g'), gel: (r.querySelector('.gel') || {}).value || '' };
+  var n = hitungPeserta(it), c = r.querySelector('.cnt');
+  c.textContent = n == null ? '' : (jenis === 'KUALIFIKASI' ? '👥 ' + n + ' peserta' : '👥 ' + n + ' atlet di kategori ini');
+  c.classList.toggle('nol', n === 0);
 }
 $('days').onclick = function(e){
   var a = e.target.closest('[data-add]');
-  if (a) { var div = document.createElement('div'); div.innerHTML = baris(a.dataset.add)(); a.parentNode.parentNode.insertBefore(div.firstChild, a.parentNode); return; }
-  var d = e.target.closest('[data-del]'); if (d) d.parentNode.remove();
+  if (a) { var div = document.createElement('div'); div.innerHTML = baris(a.dataset.add)(); var el = div.firstChild; a.parentNode.parentNode.insertBefore(el, a.parentNode); segarkan(el); el.querySelector('.mulai').focus(); return; }
+  var d = e.target.closest('[data-del]'); if (d) { if (confirm('Hapus acara ini?')) d.closest('.it').remove(); return; }
+  var c = e.target.closest('.chip');
+  if (c) {
+    var grp = c.parentNode, on = grp.querySelectorAll('.chip.on').length;
+    if (c.classList.contains('on') && on === 1) { alert('Minimal satu pilihan harus aktif.'); return; }
+    c.classList.toggle('on'); segarkan(c.closest('.it'));
+  }
+};
+$('days').onchange = function(e){
+  var r = e.target.closest('.it'); if (!r) return;
+  if (e.target.classList.contains('jenis')) {
+    var nm = r.querySelector('.acara'), lama = nm.value.trim();
+    var auto = !lama || Object.keys(NAMA_JENIS).some(function(k){ return NAMA_JENIS[k] === lama; });
+    if (auto) nm.value = NAMA_JENIS[e.target.value] || '';
+    if (e.target.value === 'LAIN' && auto) nm.focus();
+  }
+  segarkan(r);
 };
 $('btnTerap').onclick = function(){
   if (!$('tMulai').value) { alert('Isi tanggal mulai dulu.'); return; }
@@ -136,6 +216,7 @@ $('btnSimpan').onclick = function(){
     .then(function(r){ return r.json(); }).then(function(j){
       if (!j.ok) throw new Error(j.error || 'Gagal');
       J.items = items; render();
+      fetch(apiUrl() + '?action=jadwal', { redirect: 'follow' }).then(function(x){ return x.json(); }).then(function(d){ if (d.ok) $('aktifNow').textContent = d.aktif; }).catch(function(){});
       $('msg').style.color = '#2ecc71'; $('msg').textContent = '✓ Jadwal tersimpan (' + j.jumlah + ' acara). Penonton melihatnya di halaman hasil → Jadwal.';
     }).catch(function(e){ $('msg').style.color = 'var(--bad)'; $('msg').textContent = '✗ ' + e.message; });
 };
@@ -143,16 +224,35 @@ $('btnCetak').onclick = function(){
   bacaForm(); J.mulai = $('tMulai').value || J.mulai;
   $('print').innerHTML = '<h1>' + esc(J.namaLomba) + '</h1><div class="sub">Jadwal Pertandingan</div>' + hariList().map(function(t, i){
     var rows = J.items.filter(function(it){ return it.tanggal === t && it.acara; }).sort(function(a, b){ return (a.mulai || '').localeCompare(b.mulai || ''); });
-    return '<h2>Hari ' + (i + 1) + ' · ' + esc(namaHari(t)) + '</h2><table><thead><tr><th style="width:24mm">Waktu</th><th>Acara</th><th style="width:32mm">Divisi</th><th>Keterangan</th></tr></thead><tbody>' +
-      (rows.map(function(it){ return '<tr><td>' + esc(it.mulai) + (it.selesai ? '–' + esc(it.selesai) : '') + '</td><td><b>' + esc(it.acara) + '</b></td><td>' + esc(it.divisi) + '</td><td>' + esc(it.ket) + '</td></tr>'; }).join('') ||
+    return '<h2>Hari ' + (i + 1) + ' · ' + esc(namaHari(t)) + '</h2><table><thead><tr><th style="width:24mm">Waktu</th><th>Acara</th><th style="width:55mm">Peserta</th><th>Keterangan</th></tr></thead><tbody>' +
+      (rows.map(function(it){ return '<tr><td>' + esc(it.mulai) + (it.selesai ? '–' + esc(it.selesai) : '') + '</td><td><b>' + esc(it.acara) + '</b></td><td>' + esc(tKat(it)) + '</td><td>' + esc(it.ket) + '</td></tr>'; }).join('') ||
        '<tr><td colspan="4" style="color:#777">Belum ada acara</td></tr>') + '</tbody></table>';
   }).join('');
   window.print();
 };
+var DIVS = ['RECURVE','COMPOUND','NASIONAL','BAREBOW'];
+$('fiDiv').innerHTML = DIVS.map(function(d){ return '<label style="flex-direction:row;align-items:center;gap:6px;color:var(--tx);font-size:14px"><input type="checkbox" value="' + d + '"> ' + d + '</label>'; }).join('');
+function isiInput(j){
+  var f = j.filterInput || 'JADWAL', mode = f === 'JADWAL' || f === 'SEMUA' ? f : 'MANUAL';
+  document.querySelectorAll('input[name=fi]').forEach(function(r){ r.checked = r.value === mode; });
+  document.querySelectorAll('#fiDiv input').forEach(function(c){ c.checked = mode === 'MANUAL' && f.split(',').indexOf(c.value) >= 0; });
+  $('aktifNow').textContent = j.aktif || '–';
+}
+$('btnInput').onclick = function(){
+  var r = document.querySelector('input[name=fi]:checked'); if (!r) { $('msgInput').textContent = 'Pilih salah satu.'; return; }
+  var f = r.value;
+  if (f === 'MANUAL') { f = Array.prototype.filter.call(document.querySelectorAll('#fiDiv input'), function(c){ return c.checked; }).map(function(c){ return c.value; }).join(',');
+    if (!f) { $('msgInput').textContent = 'Centang minimal satu divisi.'; return; } }
+  $('msgInput').textContent = 'Menyimpan…';
+  fetch(apiUrl(), { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'aturInput', pin: AdminAuth.get(), filter: f }) })
+    .then(function(x){ return x.json(); }).then(function(j){ if (!j.ok) throw new Error(j.error || 'Gagal'); $('aktifNow').textContent = j.aktif; $('msgInput').textContent = '✓ Tersimpan. HP scorer ikut berubah saat daftar bantalan dimuat ulang.'; })
+    .catch(function(e){ $('msgInput').textContent = '✗ ' + e.message; });
+};
 function muat(){
   fetch(apiUrl() + '?action=jadwal', { redirect: 'follow' }).then(function(r){ return r.json(); }).then(function(j){
     if (!j.ok) throw new Error(j.error || 'Gagal');
-    J.namaLomba = j.namaLomba; $('ev').textContent = j.namaLomba;
+    J.namaLomba = j.namaLomba; $('ev').textContent = j.namaLomba; isiInput(j);
+    GELS = j.gelombang || []; RINGKAS = j.peserta || [];
     J.items = j.items || [];
     var hari = j.hari, mulai = j.mulai;
     if (!mulai && J.items.length) mulai = J.items[0].tanggal;
