@@ -26,13 +26,14 @@
   <p class="mut">Halaman ini tidak tersedia di aplikasi scorer.</p>
   <a class="item" id="lCetak" href="cetak.html"><div class="ic">🖨</div><div><b>Cetak scoresheet & hasil</b><span>Kartu per bantalan per sesi, kartu kosong, hasil PDF</span></div></a>
   <a class="item" id="lBracket" href="bracket.html?admin=1"><div class="ic">⚔</div><div><b>Atur & cetak bracket</b><span>Buat / hapus bracket eliminasi, cetak bracket</span></div></a>
+  <a class="item" id="lJadwal" href="jadwal.html"><div class="ic">📅</div><div><b>Jadwal pertandingan</b><span>Atur tanggal, jumlah hari, dan acara tiap hari</span></div></a>
   <a class="item" id="lHasil" href="hasil.html"><div class="ic">🏆</div><div><b>Hasil live</b><span>Peringkat kualifikasi untuk penonton</span></div></a>
   <button id="keluar">Keluar dari mode panitia</button>
 </main>
 <script src="admin-auth.js"></script>
 <script>
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycbxAHII4R5XXRlttRAEEzTyB_ejQadNRAmAgApdlPDlSV4sC9RXM2lArMI4CcvUWOzF8dA/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 function apiUrl(){
   var q = new URLSearchParams(location.search).get('api');
@@ -42,7 +43,7 @@ function apiUrl(){
   return '';
 }
 var q = new URLSearchParams(location.search).get('api');
-if (q) ['lCetak','lHasil'].forEach(function(id){ var a = document.getElementById(id); a.href += '?api=' + encodeURIComponent(q); });
+if (q) ['lCetak','lHasil','lJadwal'].forEach(function(id){ var a = document.getElementById(id); a.href += '?api=' + encodeURIComponent(q); });
 if (q) document.getElementById('lBracket').href += '&api=' + encodeURIComponent(q);
 document.getElementById('keluar').onclick = function(){ AdminAuth.clear(); location.reload(); };
 AdminAuth.gate(apiUrl(), function(){

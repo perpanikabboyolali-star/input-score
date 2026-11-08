@@ -37,8 +37,15 @@
   tr.det b{color:var(--tx)}
   .hint{color:var(--mut);font-size:12px;max-width:1100px;margin:8px auto 0;padding:0 16px}
   @media (max-width:600px){table{min-width:0;font-size:13px} th,td{padding:8px 4px} th{font-size:11px} tr.p th:nth-child(3),tr.p td:nth-child(3),thead th:nth-child(3){display:none} td.tot{font-size:15px}}
-  .mode{display:flex;margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;max-width:420px}
-  .mode button{flex:1;border:0;background:none;color:var(--mut);padding:10px 8px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .mode{display:flex;margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;max-width:520px}
+  .jd{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .jd h3{margin:0;padding:10px 12px;font-size:15px;background:#1d2a3b;display:flex;justify-content:space-between;gap:8px}
+  .jd h3 span{font-size:11px;font-weight:700;color:#111;background:var(--acc);border-radius:6px;padding:2px 8px;align-self:center}
+  .jd .ji{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:9px 12px;border-top:1px solid var(--line)}
+  .jd .ji .w{color:var(--acc);font-weight:700;font-size:13px}
+  .jd .ji b{display:block} .jd .ji small{color:var(--mut)}
+  .jd.lalu{opacity:.55}
+  .mode button{flex:1;border:0;background:none;color:var(--mut);padding:10px 6px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer}
   .mode button.on{background:var(--acc);color:#111}
   .pod{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}
   .pod div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
@@ -62,7 +69,7 @@
 <header>
   <h1 id="judul">Hasil Skor</h1>
   <div class="sub"><span class="dot"></span><span id="waktu">Memuat…</span></div>
-  <div class="mode" id="mode"><button data-m="kual" class="on">Hasil Kualifikasi</button><button data-m="elim">Hasil Eliminasi</button></div>
+  <div class="mode" id="mode"><button data-m="kual" class="on">Hasil Kualifikasi</button><button data-m="elim">Hasil Eliminasi</button><button data-m="jadwal">Jadwal</button></div>
 </header>
 <div style="max-width:1100px;margin:auto" id="boxCari"><input id="cari" placeholder="Cari nama / klub…"></div>
 <nav class="tabs" id="tabs"></nav>
@@ -108,7 +115,23 @@ function render(){
   }).join('');
   document.getElementById('isi').innerHTML = '<table><thead>'+head+'</thead><tbody>'+(rows||'<tr><td colspan="'+cols+'" class="empty">Tidak ditemukan</td></tr>')+'</tbody></table>';
 }
-var MODE = location.hash === '#eliminasi' ? 'elim' : 'kual', DATAE = null;
+var MODE = location.hash === '#eliminasi' ? 'elim' : location.hash === '#jadwal' ? 'jadwal' : 'kual', DATAE = null, DATAJ = null;
+function renderJadwal(){
+  var box = document.getElementById('isiE');
+  document.getElementById('tabs').innerHTML = ''; document.getElementById('tabsKu').innerHTML = '';
+  if(!DATAJ){ box.innerHTML = '<div class="wrap"><div class="empty">Memuat jadwal…</div></div>'; return; }
+  var items = DATAJ.items || [];
+  if(!items.length){ box.innerHTML = '<div class="wrap"><div class="empty">Jadwal belum diumumkan.</div></div>'; return; }
+  var d0 = new Date(), hariIni = d0.getFullYear()+'-'+('0'+(d0.getMonth()+1)).slice(-2)+'-'+('0'+d0.getDate()).slice(-2);
+  var tgl = uniq(items.map(function(it){return it.tanggal}));
+  if (DATAJ.mulai && DATAJ.hari) { tgl = []; for (var i=0;i<DATAJ.hari;i++){ var d=new Date(DATAJ.mulai+'T00:00:00'); d.setDate(d.getDate()+i); tgl.push(d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)); } }
+  box.innerHTML = tgl.map(function(t,i){
+    var rows = items.filter(function(it){return it.tanggal===t});
+    var nama = new Date(t+'T00:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    return '<div class="jd'+(t<hariIni?' lalu':'')+'"><h3>Hari '+(i+1)+' · '+esc(nama)+(t===hariIni?'<span>HARI INI</span>':'')+'</h3>'+
+      (rows.map(function(it){ return '<div class="ji"><div class="w">'+esc(it.mulai||'')+(it.selesai?' – '+esc(it.selesai):'')+'</div><div><b>'+esc(it.acara)+'</b><small>'+esc([it.divisi,it.ket].filter(Boolean).join(' · '))+'</small></div></div>'; }).join('')||'<div class="ji"><div></div><div><small>Belum ada acara</small></div></div>')+'</div>';
+  }).join('');
+}
 function nmOrang(o){ return o ? esc(o.nama)+'<small>'+esc(o.klub)+'</small>' : '<i style="color:var(--mut)">'+'—'+'</i>'; }
 function kartuMatch(m, sistem){
   var main = (m.skorA && m.skorA.length) || (m.skorB && m.skorB.length);
@@ -151,17 +174,17 @@ function renderElim(){
   box.innerHTML = '<div style="color:var(--mut);font-size:13px;margin-bottom:10px">'+esc(kat.kategori)+' · '+(kat.sistem==='KUMULATIF'?'Sistem kumulatif (5 rambahan)':'Sistem set (pertama mencapai 6 poin)')+' · Babak awal '+esc(kat.babakAwal)+'</div>'+html;
 }
 function tampil(){
-  var e = MODE==='elim';
+  var e = MODE==='elim' || MODE==='jadwal';
   document.querySelectorAll('#mode button').forEach(function(b){ b.classList.toggle('on', b.dataset.m===MODE); });
   document.getElementById('isi').style.display = e?'none':'';
   document.getElementById('boxCari').style.display = e?'none':'';
   document.getElementById('hint').style.display = e?'none':'';
   document.getElementById('isiE').style.display = e?'':'none';
-  if(e) renderElim(); else render();
+  if(MODE==='jadwal') renderJadwal(); else if(e) renderElim(); else render();
 }
-document.getElementById('mode').addEventListener('click',function(ev){ var b=ev.target.closest('button'); if(!b) return; MODE=b.dataset.m; history.replaceState(null,'',MODE==='elim'?'#eliminasi':'#'); KU=null; tampil(); muat(); });
+document.getElementById('mode').addEventListener('click',function(ev){ var b=ev.target.closest('button'); if(!b) return; MODE=b.dataset.m; history.replaceState(null,'',MODE==='elim'?'#eliminasi':MODE==='jadwal'?'#jadwal':'#'); KU=null; tampil(); muat(); });
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycbxAHII4R5XXRlttRAEEzTyB_ejQadNRAmAgApdlPDlSV4sC9RXM2lArMI4CcvUWOzF8dA/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 function apiUrl(){
   var q = new URLSearchParams(location.search).get('api');
@@ -173,9 +196,9 @@ function apiUrl(){
 function muat(){
   var u = apiUrl();
   if(!u){ document.getElementById('waktu').textContent = 'URL Web App belum diisi di hasil.html (API_URL).'; return; }
-  fetch(u + '?action=' + (MODE==='elim'?'eliminasi':'hasil'), {redirect:'follow'}).then(function(r){return r.json()}).then(function(j){
+  fetch(u + '?action=' + (MODE==='elim'?'eliminasi':MODE==='jadwal'?'jadwal':'hasil'), {redirect:'follow'}).then(function(r){return r.json()}).then(function(j){
     if(!j.ok) throw new Error(j.error||'Gagal');
-    if (MODE==='elim') DATAE = j; else DATA = j;
+    if (MODE==='elim') DATAE = j; else if (MODE==='jadwal') { DATAJ = j; if (j.namaLomba) document.getElementById('judul').textContent = j.namaLomba; } else DATA = j;
     tampil();
     document.getElementById('waktu').textContent = 'Live · diperbarui '+new Date().toLocaleTimeString('id-ID');
   }).catch(function(e){
