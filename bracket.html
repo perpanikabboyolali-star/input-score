@@ -103,6 +103,8 @@
 <details id="admin" hidden>
   <summary>⚙ Atur bracket (panitia)</summary>
   <div class="adm">
+    <div class="hint" style="margin-bottom:8px"><b>Beregu & Mix Team:</b> setelah kualifikasi selesai, klik tombol ini untuk menyusun tim otomatis per klub (beregu = 3 pemanah terbaik, mix = 1 putra + 1 putri terbaik). Anggota tim bisa dikoreksi di sheet <b>Tim</b>.</div>
+    <div class="row" style="margin-bottom:10px"><button class="btn" id="aTim">👥 Susun tim otomatis</button></div>
     <label>Kategori <select id="aKat"></select></label>
     <label>Mulai dari babak
       <select id="aBabak">
@@ -126,7 +128,7 @@
 <script src="admin-auth.js"></script>
 <script>
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycby8NxBvkBGVCFVEb47rhzRscLnEbdFuKm8mmAEfR2ajyUaiK4Mf26V7TspkIipCHY_F6A/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 var DATA = null, KAT = null;
 var $ = function(id){ return document.getElementById(id); };
@@ -197,7 +199,7 @@ function render(){
 function isiAdmin(){
   var sel = $('aKat').value;
   $('aKat').innerHTML = DATA.kategori.map(function(k){
-    return '<option value="' + esc(k.kategori) + '">' + esc(k.kategori) + ' — ' + k.jumlah + ' pemanah' + (k.punyaBracket ? ' (bracket ' + k.babakAwal + ')' : '') + '</option>';
+    return '<option value="' + esc(k.kategori) + '">' + esc(k.kategori) + ' — ' + k.jumlah + (k.jenis && k.jenis !== 'INDIVIDU' ? ' tim' : ' pemanah') + (k.punyaBracket ? ' (bracket ' + k.babakAwal + ')' : '') + '</option>';
   }).join('');
   if (sel) $('aKat').value = sel; else if (KAT) $('aKat').value = KAT;
   saran();
@@ -207,7 +209,8 @@ function saran(){
   if (!k) return;
   var pilih = '1/2'; ['1/2','1/4','1/8','1/16','1/32'].some(function(b){ pilih = b; return UKURAN[b] >= k.jumlah; });
   var u = UKURAN[$('aBabak').value];
-  $('aHint').innerHTML = k.jumlah + ' pemanah punya skor kualifikasi. Saran: mulai <b>' + pilih + '</b>. ' +
+  var unit = k.jenis && k.jenis !== 'INDIVIDU' ? 'tim' : 'pemanah';
+  $('aHint').innerHTML = k.jumlah + ' ' + unit + ' punya skor kualifikasi. Saran: mulai <b>' + pilih + '</b>. ' +
     (k.jumlah > u ? 'Dengan ' + $('aBabak').value + ', hanya <b>' + u + ' teratas</b> yang lolos.' : (u - k.jumlah) + ' kursi kosong → bye untuk unggulan teratas.') +
     ' Sistem: <b>' + (k.sistem === 'SET' ? 'set' : 'kumulatif') + '</b>.';
 }
@@ -223,13 +226,18 @@ $('aBuat').onclick = function(){
   var ada = DATA.kategori.some(function(x){ return x.kategori === k && x.punyaBracket; });
   if (ada && !confirm('Bracket ' + k + ' sudah ada. Buat ulang? Semua skor eliminasi kategori ini akan dihapus.')) return;
   kirim({ action: 'buatBracket', kategori: k, babak: b }).then(function(j){
-    $('admMsg').textContent = '✓ Bracket dibuat: ' + j.lolos + ' pemanah lolos.'; KAT = k; muat();
+    $('admMsg').textContent = '✓ Bracket dibuat: ' + j.lolos + (/^(BEREGU|MIX) /.test(k) ? ' tim' : ' pemanah') + ' lolos.'; KAT = k; muat();
   }).catch(function(e){ $('admMsg').textContent = '✗ ' + e.message; });
 };
 $('aHapus').onclick = function(){
   var k = $('aKat').value;
   if (!confirm('Hapus bracket ' + k + ' beserta semua skor eliminasinya?')) return;
   kirim({ action: 'hapusBracket', kategori: k }).then(function(){ $('admMsg').textContent = '✓ Bracket dihapus.'; muat(); })
+    .catch(function(e){ $('admMsg').textContent = '✗ ' + e.message; });
+};
+$('aTim').onclick = function(){
+  if (!confirm('Susun ulang semua tim dari peringkat kualifikasi? Isi sheet Tim akan diganti.')) return;
+  kirim({ action: 'susunTim' }).then(function(j){ $('admMsg').textContent = '✓ ' + j.jumlah + ' tim disusun. Cek / koreksi di sheet Tim.'; muat(); })
     .catch(function(e){ $('admMsg').textContent = '✗ ' + e.message; });
 };
 $('tabs').onclick = function(e){ var b = e.target.closest('.tab'); if (b) { KAT = b.dataset.k; render(); } };

@@ -115,7 +115,7 @@
 <script src="admin-auth.js"></script>
 <script>
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycby8WtcKLpsfBAHkWWEwSbAzo5dbTqE4ln-5DHHs9hNe-wSEIwUCf_ILKhkLlk2XAOojXw/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 var MODE = 'kartu', KARTU = null, HASIL = null, ELIM = null;
 var $ = function(id){ return document.getElementById(id); };
@@ -230,23 +230,24 @@ function renderHasil(){
   var fs = Number($('fSesi').value) || 0, gel = $('fGel').value, eps = KARTU.endPerSesi;
   var info = {}; KARTU.data.forEach(function(p){ info[p.id] = p; });
   var sesiStat = function(p, s){   // total, 10+X, X untuk satu sesi dari data per rambahan
+    if (p.tim) { var o = { total: 0, sepuluh: 0, x: 0 }; (p.anggota || []).forEach(function(id){ var q = sesiStat({ id: id }, s); o.total += q.total; o.sepuluh += q.sepuluh; o.x += q.x; }); return o; }
     var k = info[p.id], t = 0, sp = 0, x = 0;
     for (var e = (s - 1) * eps + 1; e <= s * eps; e++) { var en = k && k.skor && k.skor[e]; if (en) { t += Number(en.total) || 0; sp += Number(en.sepuluh) || 0; x += Number(en.x) || 0; } }
     return { total: t, sepuluh: sp, x: x };
   };
   var grp = HASIL.data.filter(function(k){ return !kat || k.kategori === kat; }).map(function(g){
-    var list = g.peserta.filter(function(p){ return !gel || ((info[p.id] || {}).gelombang || '') === gel; }).map(function(p){
+    var list = g.peserta.filter(function(p){ return !gel || ((info[p.tim ? (p.anggota || [])[0] : p.id] || {}).gelombang || '') === gel; }).map(function(p){
       var st = fs ? sesiStat(p, fs) : { total: p.total, sepuluh: p.sepuluh, x: p.x };
       return { p: p, total: st.total, sepuluh: st.sepuluh, x: st.x };
     });
     list.sort(function(a, b){ return b.total - a.total || b.sepuluh - a.sepuluh || b.x - a.x || a.p.nama.localeCompare(b.p.nama); });
     list.forEach(function(r, i){ var pv = list[i - 1]; r.rank = pv && pv.total === r.total && pv.sepuluh === r.sepuluh && pv.x === r.x ? pv.rank : i + 1; });
-    return { kategori: g.kategori, list: list };
+    return { kategori: g.kategori, list: list, tim: g.tim };
   }).filter(function(g){ return g.list.length; });
   if (!grp.length) return '<div class="page"><p>Tidak ada data untuk filter ini.</p></div>';
   var judul = 'Hasil Kualifikasi' + (fs && nS > 1 ? ' · Sesi ' + fs : '') + (gel ? ' · Gelombang ' + esc(gel) : '');
   var body = grp.map(function(g, gi){
-    var head = '<tr><th>#</th><th class="l">Nama</th><th class="l">Klub</th><th>Bant.</th>';
+    var head = '<tr><th>#</th><th class="l">' + (g.tim ? 'Tim' : 'Nama') + '</th><th class="l">' + (g.tim ? 'Anggota' : 'Klub') + '</th><th>' + (g.tim ? '' : 'Bant.') + '</th>';
     if (fs) head += '<th>' + (nS > 1 ? 'Sesi ' + fs : 'Skor') + '</th>';
     else { for (var s = 1; s <= nS; s++) head += '<th>' + (nS > 1 ? 'Sesi ' + s : 'Skor') + '</th>'; head += '<th>Total</th>'; }
     head += '<th>10+X</th><th>X</th></tr>';
