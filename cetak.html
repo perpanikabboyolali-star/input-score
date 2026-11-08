@@ -80,6 +80,27 @@
   .rpage + .rpage.brk{page-break-before:always;break-before:page}
   .rpage + .rpage:not(.brk){margin-top:10mm}
 
+  /* ---------- scoresheet eliminasi: 2 pertandingan per A4 portrait ---------- */
+  .em{height:134mm;border:1.4px solid var(--ink);padding:3mm 4mm;display:flex;flex-direction:column;page-break-inside:avoid;break-inside:avoid}
+  .em + .em{margin-top:6mm}
+  .em-h{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.6px solid var(--ink);padding-bottom:1.5mm;margin-bottom:2mm}
+  .em-h .ev{font-size:11pt;font-weight:800} .em-h .sub{font-size:7.5pt;color:var(--mut)}
+  .em-h .kt{text-align:right;font-size:8pt} .em-h .kt b{display:block;font-size:12pt}
+  .em-c{display:grid;grid-template-columns:1fr 1fr;gap:5mm;flex:1}
+  .em-p{border:1px solid #888;padding:1.2mm 2mm;margin-bottom:1.5mm;min-height:11mm}
+  .em-p b{font-size:10pt;display:block} .em-p small{font-size:7pt;color:var(--mut)} .em-p .sd{float:right;font-size:8pt;font-weight:700}
+  table.es{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9pt}
+  table.es th,table.es td{border:1px solid #444;text-align:center;height:7.2mm;padding:0}
+  table.es th{background:#ececec;font-size:6.8pt;height:4.5mm}
+  table.es td.n{background:#ececec;font-weight:800}
+  table.es td.t{font-weight:700} table.es td.pt{font-weight:800;background:#f6f6f6}
+  table.es tr.so td{height:6.5mm}
+  table.es tr.tot td{border:1.4px solid var(--ink);font-weight:800;font-size:10.5pt}
+  table.es td.lb{border:0;text-align:right;padding-right:1.5mm;font-size:8pt;background:none}
+  .em .win{margin-top:1.5mm;font-size:8.5pt;border:1px solid #888;padding:1mm 2mm}
+  .em .sg{margin-top:auto;padding-top:8mm}
+  .em .sg div{font-size:6.5pt}
+
   /* ---------- saat dicetak ---------- */
   @media print{
     body{background:#fff}
@@ -96,12 +117,14 @@
   <div class="seg" id="mode">
     <button data-m="kartu" class="on">Scoresheet</button>
     <button data-m="hasil">Hasil Kualifikasi</button>
+    <button data-m="ess">Scoresheet Eliminasi</button>
     <button data-m="elim">Hasil Eliminasi</button>
   </div>
   <label id="lKat" hidden>Kategori <select id="fKat"><option value="">Semua</option></select></label>
   <label id="lSesi">Sesi <select id="fSesi"></select></label>
   <label id="lGel" hidden>Gelombang <select id="fGel"><option value="">Semua</option></select></label>
   <label id="lBant">Bantalan <select id="fBant"><option value="">Semua</option></select></label>
+  <label id="lBabak" hidden>Babak <select id="fBabak"><option value="">Semua</option></select></label>
   <label id="lKosong"><input type="checkbox" id="fKosong"> Kartu kosong</label>
   <label id="lBrk" hidden><input type="checkbox" id="fBrk" checked> 1 kategori per halaman</label>
   <button class="btn" id="btnMuat">↻ Muat ulang</button>
@@ -115,7 +138,7 @@
 <script src="admin-auth.js"></script>
 <script>
 /* ===== ISI SEKALI: URL Web App Apps Script (berakhiran /exec) ===== */
-var API_URL = 'https://script.google.com/macros/s/AKfycbxAHII4R5XXRlttRAEEzTyB_ejQadNRAmAgApdlPDlSV4sC9RXM2lArMI4CcvUWOzF8dA/exec';
+var API_URL = 'TEMPEL_URL_EXEC_DI_SINI';
 /* ================================================================== */
 var MODE = 'kartu', KARTU = null, HASIL = null, ELIM = null;
 var $ = function(id){ return document.getElementById(id); };
@@ -149,7 +172,7 @@ function isiFilter(){
   var fs = $('fSesi').value, so = '<option value="">Semua sesi</option>';
   for (var s = 1; s <= KARTU.jumlahSesi; s++) so += '<option value="' + s + '">Sesi ' + s + '</option>';
   $('fSesi').innerHTML = so; $('fSesi').value = fs;
-  var kats = MODE === 'elim' ? (ELIM ? ELIM.kategori.filter(function(k){ return k.punyaBracket; }).map(function(k){ return k.kategori; }) : [])
+  var kats = MODE === 'elim' || MODE === 'ess' ? (ELIM ? ELIM.kategori.filter(function(k){ return k.punyaBracket; }).map(function(k){ return k.kategori; }) : [])
                              : HASIL.data.map(function(k){ return k.kategori; });
   $('fKat').innerHTML = '<option value="">Semua</option>' + kats.map(function(k){ return '<option>' + esc(k) + '</option>'; }).join('');
   var gel = $('fGel').value, gels = [];
@@ -267,6 +290,85 @@ function renderHasil(){
   return '<div class="page">' + body + '</div>';
 }
 
+/* ---------- scoresheet eliminasi ---------- */
+var F_IND = { ends: 5, arrows: 3, setWin: 6, soN: 1 };
+function nilaiE(v){ return v === 'X' ? 10 : v === 'M' || !v ? 0 : Number(v) || 0; }
+function soArr(v){ return String(v == null ? '' : v).split(',').map(function(x){ return x.trim(); }).filter(Boolean); }
+function lembarMatch(m, k, kosong){
+  var f = k.format || F_IND, set = k.sistem !== 'KUMULATIF', tim = f.arrows !== 3;
+  var sa = kosong ? [] : (m.skorA || []), sb = kosong ? [] : (m.skorB || []);
+  // poin per rambahan (sistem set) atau kumulatif
+  var pa = 0, pb = 0, ca = 0, cb = 0, info = [];
+  for (var i = 0; i < f.ends; i++) {
+    var a = sa[i] || [], b = sb[i] || [], ta = a.reduce(function(t, v){ return t + nilaiE(v); }, 0), tb = b.reduce(function(t, v){ return t + nilaiE(v); }, 0);
+    var lengkap = a.length >= f.arrows && b.length >= f.arrows, selesai = set && (pa >= f.setWin || pb >= f.setWin);
+    var r = { a: a, b: b, ta: a.length ? ta : '', tb: b.length ? tb : '', pa: '', pb: '' };
+    if (lengkap && !selesai) {
+      ca += ta; cb += tb;
+      if (set) { var p = ta > tb ? [2, 0] : tb > ta ? [0, 2] : [1, 1]; pa += p[0]; pb += p[1]; r.pa = p[0]; r.pb = p[1]; }
+      else { r.pa = ca; r.pb = cb; }
+    }
+    info.push(r);
+  }
+  var soA = kosong ? [] : soArr(m.soA), soB = kosong ? [] : soArr(m.soB);
+  var kolom = function(sisi){
+    var o = sisi === 'A' ? m.a : m.b, w = !kosong && m.pemenang === sisi;
+    var head = '<tr><th style="width:7mm">' + (set ? 'Set' : 'Rmb') + '</th>';
+    for (var q = 1; q <= f.arrows; q++) head += '<th>' + q + '</th>';
+    head += '<th style="width:10mm">Jml</th><th style="width:10mm">' + (set ? 'Poin' : 'Kum.') + '</th></tr>';
+    var body = info.map(function(r, i){
+      var arr = sisi === 'A' ? r.a : r.b, c = '';
+      for (var q = 0; q < f.arrows; q++) c += '<td>' + esc(arr[q] || '') + '</td>';
+      return '<tr><td class="n">' + (i + 1) + '</td>' + c + '<td class="t">' + (sisi === 'A' ? r.ta : r.tb) + '</td><td class="pt">' + (sisi === 'A' ? r.pa : r.pb) + '</td></tr>';
+    }).join('');
+    var so = sisi === 'A' ? soA : soB, sc = '';
+    for (var q2 = 0; q2 < f.arrows; q2++) sc += q2 < f.soN ? '<td>' + esc(so[q2] || '') + '</td>' : '<td style="border:0"></td>';
+    var soT = so.length ? so.reduce(function(t, v){ return t + nilaiE(v); }, 0) : '';
+    var closer = !kosong && m.soCloser === sisi ? ' ●' : '';
+    var akhir = kosong ? '' : (set ? (sisi === 'A' ? m.poinA : m.poinB) : (sisi === 'A' ? ca : cb));
+    if (!kosong && !((m.skorA && m.skorA.length) || (m.skorB && m.skorB.length))) akhir = '';
+    return '<div><div class="em-p"><span class="sd">' + (o && o.seed ? 'Seed ' + esc(o.seed) : '') + '</span><b>' + (o ? esc(o.nama) : '&nbsp;') + (w ? ' ✓' : '') + '</b><small>' + (o ? esc(o.klub) : (tim ? 'Tim' : 'Pemanah') + ' ' + sisi) + '</small></div>' +
+      '<table class="es"><thead>' + head + '</thead><tbody>' + body +
+      '<tr class="so"><td class="n" style="font-size:6.5pt">SO</td>' + sc + '<td class="t">' + soT + closer + '</td><td style="border:0"></td></tr>' +
+      '<tr class="tot"><td class="lb" colspan="' + (f.arrows + 1) + '">' + (set ? 'Total poin set' : 'Total skor') + '</td><td colspan="2">' + akhir + '</td></tr>' +
+      '</tbody></table>' +
+      '<div class="sg"><div>' + (tim ? 'Kapten Tim' : 'Pemanah') + '</div><div>Pencatat Skor</div></div></div>';
+  };
+  var pemenang = !kosong && m.pemenang ? (m.pemenang === 'A' ? m.a : m.b) : null;
+  return '<div class="em"><div class="em-h"><div><div class="ev">' + esc(ELIM.namaLomba) + '</div><div class="sub">Scoresheet Eliminasi · ' +
+      (tim ? (f.arrows === 6 ? 'Beregu' : 'Mix Team') + ' · ' : '') + f.ends + ' rambahan × ' + f.arrows + ' anak panah · ' + (set ? 'sistem set (menang ' + f.setWin + ' poin)' : 'sistem kumulatif') + '</div></div>' +
+      '<div class="kt">' + esc(k.kategori) + '<b>' + esc(m.babak === 'Perunggu' ? 'Perebutan Juara 3' : m.babak) + (m.ukuran > 1 ? ' #' + m.no : '') + (m.bantalan ? ' · Bantalan ' + esc(m.bantalan) : ' · Bantalan ____') + '</b></div></div>' +
+    '<div class="em-c">' + kolom('A') + kolom('B') + '</div>' +
+    '<div class="win">Pemenang: <b>' + (pemenang ? esc(pemenang.nama) : '') + '</b>' + (f.soN ? '&nbsp;&nbsp;&nbsp;<span style="color:#555">SO ' + f.soN + ' anak panah · ● = paling dekat ke tengah</span>' : '') + '</div></div>';
+}
+function renderESS(){
+  if (!ELIM) return '<div class="page"><p>Data eliminasi tidak bisa dimuat.</p></div>';
+  var kat = $('fKat').value, bb = $('fBabak').value, kosong = $('fKosong').checked;
+  var kats = {}; ELIM.kategori.forEach(function(k){ kats[k.kategori] = k; });
+  var urut = function(m){ return m.ukuran === 1 ? 1.5 : m.ukuran; };
+  var list = ELIM.matches.filter(function(m){
+    if (kat && m.kategori !== kat) return false;
+    if (bb && m.babak !== bb) return false;
+    if (m.pemenang && (!m.a || !m.b)) return false;            // bye
+    return kosong || (m.a && m.b);                              // kartu kosong: semua pertandingan
+  }).sort(function(x, y){ return x.kategori.localeCompare(y.kategori) || urut(y) - urut(x) || x.no - y.no; });
+  if (!list.length) return '<div class="page"><p>Tidak ada pertandingan untuk filter ini' + (kosong ? '' : ' (centang Kartu kosong untuk mencetak pertandingan yang pesertanya belum ditentukan)') + '.</p></div>';
+  var html = '';
+  for (var i = 0; i < list.length; i += 2) {
+    html += '<div class="page">' + lembarMatch(list[i], kats[list[i].kategori] || {}, kosong) + (list[i + 1] ? lembarMatch(list[i + 1], kats[list[i + 1].kategori] || {}, kosong) : '') + '</div>';
+  }
+  return html;
+}
+function isiBabak(){
+  if (!ELIM) return;
+  var v = $('fBabak').value, kat = $('fKat').value, ada = [];
+  ['1/32','1/16','1/8','1/4','Semifinal','Perunggu','Final'].forEach(function(b){
+    if (ELIM.matches.some(function(m){ return m.babak === b && (!kat || m.kategori === kat); })) ada.push(b);
+  });
+  $('fBabak').innerHTML = '<option value="">Semua</option>' + ada.map(function(b){ return '<option value="' + b + '">' + (b === 'Perunggu' ? 'Perebutan Juara 3' : b) + '</option>'; }).join('');
+  $('fBabak').value = ada.indexOf(v) >= 0 ? v : '';
+}
+
 /* ---------- hasil eliminasi per kategori ---------- */
 function peringkatElim(ms){
   var orang = {}, urutan = [];
@@ -323,12 +425,13 @@ function renderElim(){
 function render(){
   if (!KARTU) return;
   var k = MODE === 'kartu';
-  var h = MODE === 'hasil'; $('lBant').hidden = !k; $('lGel').hidden = !(k || h) || $('fGel').options.length < 2; $('lSesi').hidden = !(k || h); $('lKosong').hidden = !k; $('lBrk').hidden = k; $('lKat').hidden = k;
+  var es = MODE === 'ess'; if (es) isiBabak(); $('lBabak').hidden = !es;
+  var h = MODE === 'hasil'; $('lBant').hidden = !k; $('lGel').hidden = !(k || h) || $('fGel').options.length < 2; $('lSesi').hidden = !(k || h); $('lKosong').hidden = !(k || es); $('lBrk').hidden = k || es; $('lKat').hidden = k;
   document.body.classList.toggle('land', k);
   $('pg').textContent = k ? '@page{size:A4 landscape;margin:8mm}' : '@page{size:A4 portrait;margin:10mm}';
-  $('out').innerHTML = MODE === 'kartu' ? renderKartu() : MODE === 'elim' ? renderElim() : renderHasil();
+  $('out').innerHTML = MODE === 'kartu' ? renderKartu() : MODE === 'elim' ? renderElim() : es ? renderESS() : renderHasil();
   document.title = k ? 'Scoresheet' + ($('fBant').value ? ' Bantalan ' + $('fBant').value : '') + ($('fSesi').value ? ' Sesi ' + $('fSesi').value : '') + ' - ' + KARTU.namaLomba
-                     : (MODE === 'elim' ? 'Hasil Eliminasi' : 'Hasil Kualifikasi' + ($('fSesi').value ? ' Sesi ' + $('fSesi').value : '') + ($('fGel').value ? ' ' + $('fGel').value : '')) + ($('fKat').value ? ' - ' + $('fKat').value : '') + ' - ' + KARTU.namaLomba;
+                     : es ? 'Scoresheet Eliminasi' + ($('fBabak').value ? ' ' + $('fBabak').value : '') + ($('fKat').value ? ' - ' + $('fKat').value : '') + ' - ' + KARTU.namaLomba : (MODE === 'elim' ? 'Hasil Eliminasi' : 'Hasil Kualifikasi' + ($('fSesi').value ? ' Sesi ' + $('fSesi').value : '') + ($('fGel').value ? ' ' + $('fGel').value : '')) + ($('fKat').value ? ' - ' + $('fKat').value : '') + ' - ' + KARTU.namaLomba;
 }
 
 $('mode').onclick = function(e){
@@ -338,12 +441,13 @@ $('mode').onclick = function(e){
   if (KARTU) isiFilter();
   render();
 };
-['fKat','fGel','fBant','fSesi','fKosong','fBrk'].forEach(function(id){ $(id).onchange = render; });
+['fKat','fGel','fBant','fSesi','fKosong','fBrk','fBabak'].forEach(function(id){ $(id).onchange = render; });
 $('btnMuat').onclick = muat;
 $('btnCetak').onclick = function(){ window.print(); };
 var qm = new URLSearchParams(location.search).get('mode');
 if (qm === 'hasil') $('mode').children[1].click();
-if (qm === 'elim') $('mode').children[2].click();
+if (qm === 'ess') $('mode').children[2].click();
+if (qm === 'elim') $('mode').children[3].click();
 AdminAuth.gate(apiUrl(), function(){ muat(); }, 'Cetak Scoresheet & Hasil');
 </script>
 </body>
