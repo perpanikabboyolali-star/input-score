@@ -128,3 +128,4 @@ input{display:block;width:100%;margin-top:6px;padding:12px;border-radius:10px;bo
 .mso .dk{display:flex;gap:6px;margin-top:8px}
 .mso .dk button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--tx)}
 .mso .dk button.on{background:var(--acc);color:#111}
+.mend .tri.tim .a{height:30px;font-size:14px;border-radius:6px}

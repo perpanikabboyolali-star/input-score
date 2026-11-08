@@ -30,26 +30,30 @@
   }
 
   /* ---------- aturan pertandingan (sama dengan server) ---------- */
-  function hitung(sa, sb, soA, soB, soC, sistem) {
+  var F_IND = { ends: 5, arrows: 3, setWin: 6, soN: 1 };
+  function soList(v) { return Array.isArray(v) ? v.slice() : String(v == null ? '' : v).split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
+  function hitung(sa, sb, soA, soB, soC, sistem, f) {
+    f = f || F_IND;
     var pa = 0, pb = 0, ta = 0, tb = 0, ends = 0, win = '', pts = [];
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < f.ends; i++) {
       var a = (sa[i] || []).filter(Boolean), b = (sb[i] || []).filter(Boolean);
-      if (a.length < 3 || b.length < 3) break;
+      if (a.length < f.arrows || b.length < f.arrows) break;
       ends++;
       var x = sum(a), y = sum(b); ta += x; tb += y;
       if (sistem === 'SET') {
         var p = x > y ? [2, 0] : y > x ? [0, 2] : [1, 1];
         pa += p[0]; pb += p[1]; pts.push(p);
-        if (pa >= 6 || pb >= 6) { win = pa > pb ? 'A' : 'B'; break; }
+        if (pa >= f.setWin || pb >= f.setWin) { win = pa > pb ? 'A' : 'B'; break; }
       } else pts.push([ta, tb]);
     }
     var so = false;
-    if (!win && ends === 5) {
+    if (!win && ends === f.ends) {
       var seri = sistem === 'SET' ? pa === pb : ta === tb;
       if (!seri) win = sistem === 'SET' ? (pa > pb ? 'A' : 'B') : (ta > tb ? 'A' : 'B');
       else {
         so = true;
-        if (soA && soB) { var va = val(soA), vb = val(soB); win = va > vb ? 'A' : vb > va ? 'B' : (soC === 'A' || soC === 'B' ? soC : ''); }
+        var la = (soA || []).filter(Boolean), lb = (soB || []).filter(Boolean);
+        if (la.length >= f.soN && lb.length >= f.soN) { var va = sum(la), vb = sum(lb); win = va > vb ? 'A' : vb > va ? 'B' : (soC === 'A' || soC === 'B' ? soC : ''); }
         if (win && sistem === 'SET') { if (win === 'A') pa++; else pb++; }
       }
     }
@@ -76,7 +80,12 @@
     $('hTitle').textContent = 'Babak Eliminasi'; $('hSub').textContent = E.kat || 'Pilih kategori';
     renderList();
     api({ action: 'eliminasi' }).then(function (j) { E.data = j; save('elimData', j); renderList(); })
-      .catch(function (e) { toast('Pakai data tersimpan (' + e.message + ')'); });
+      .catch(function (e) {
+        var m = /JSON|Unexpected token/i.test(e.message) ? 'Server belum versi terbaru. Panitia perlu menempel Code.gs baru lalu membuat Versi baru di Kelola penerapan.' : e.message;
+        if (E.data) { toast('Pakai data tersimpan (' + m + ')'); return; }
+        $('elList').innerHTML = '<p class="mut pad">Gagal memuat: ' + m + '</p><div class="pad"><button class="btn ghost" id="elUlang">↻ Coba lagi</button></div>';
+        $('elUlang').onclick = openList;
+      });
   }
   function renderList() {
     E.data = E.data || load('elimData', null);
@@ -105,13 +114,14 @@
   $('elList').onclick = function (e) { var r = e.target.closest('.mt'); if (r) openMatch(r.dataset.id); };
 
   /* ---------- input skor pertandingan ---------- */
-  function pad(sk) { var o = []; for (var i = 0; i < 5; i++) o.push(((sk && sk[i]) || []).slice(0, 3)); return o; }
+  function pad(sk, f) { var o = []; for (var i = 0; i < f.ends; i++) o.push(((sk && sk[i]) || []).slice(0, f.arrows)); return o; }
   function openMatch(id) {
     var m = E.data.matches.filter(function (x) { return x.id === id; })[0]; if (!m) return;
     E.m = m;
     var d = load('md_' + id, null);
-    E.sa = pad(d ? d.sa : m.skorA); E.sb = pad(d ? d.sb : m.skorB);
-    E.soA = d ? d.soA : (m.soA || ''); E.soB = d ? d.soB : (m.soB || ''); E.soC = d ? d.soC : (m.soCloser || '');
+    var f = fmtKat(m.kategori);
+    E.sa = pad(d ? d.sa : m.skorA, f); E.sb = pad(d ? d.sb : m.skorB, f);
+    E.soA = soList(d ? d.soA : m.soA); E.soB = soList(d ? d.soB : m.soB); E.soC = d ? d.soC : (m.soCloser || '');
     E.cur = null;
     var face = katInfo(m.kategori).face;
     $('mKeypad').innerHTML = (face === '6ring' ? KEYS_6 : KEYS).map(function (k) { return '<button class="key v-' + k + '" data-k="' + k + '">' + k + '</button>'; }).join('');
@@ -120,37 +130,46 @@
     renderMatch();
   }
   function sistem() { return katInfo(E.m.kategori).sistem || 'SET'; }
+  function fmtKat(k) { return katInfo(k).format || F_IND; }
+  function fmt() { return fmtKat(E.m.kategori); }
   function autoCur(h) {
     if (h.pemenang && !h.perluSO) return null;
-    if (h.perluSO) { if (!E.soA) return { so: 'A' }; if (!E.soB) return { so: 'B' }; return null; }
-    for (var i = 0; i < 5; i++) {
+    var f = fmt();
+    if (h.perluSO) {
+      for (var q = 0; q < f.soN; q++) if (!E.soA[q]) return { so: 'A', idx: q };
+      for (q = 0; q < f.soN; q++) if (!E.soB[q]) return { so: 'B', idx: q };
+      return null;
+    }
+    for (var i = 0; i < f.ends; i++) {
       for (var s = 0; s < 2; s++) {
         var arr = s === 0 ? E.sa[i] : E.sb[i];
-        for (var k = 0; k < 3; k++) if (!arr[k]) return { side: s === 0 ? 'A' : 'B', end: i, idx: k };
+        for (var k = 0; k < f.arrows; k++) if (!arr[k]) return { side: s === 0 ? 'A' : 'B', end: i, idx: k };
       }
     }
     return null;
   }
-  function sama(a, b) { return a && b && a.so === b.so && a.side === b.side && a.end === b.end && a.idx === b.idx; }
+  function sama(a, b) { return !!(a && b && a.so === b.so && a.side === b.side && a.end === b.end && a.idx === b.idx); }
   function renderMatch() {
-    var m = E.m, sis = sistem(), h = hitung(E.sa, E.sb, E.soA, E.soB, E.soC, sis);
+    var m = E.m, sis = sistem(), f = fmt(), h = hitung(E.sa, E.sb, E.soA, E.soB, E.soC, sis, f);
+    var tim = f.arrows !== 3, lbl = function (o) { return tim ? esc(o.klub) : 'Seed ' + esc(o.seed) + ' · ' + esc(o.klub); };
     var cur = E.cur || autoCur(h);
     $('mHead').innerHTML =
-      '<div class="pl">' + esc(m.a.nama) + '<small>Seed ' + esc(m.a.seed) + ' · ' + esc(m.a.klub) + '</small></div>' +
+      '<div class="pl">' + esc(m.a.nama) + '<small>' + lbl(m.a) + '</small></div>' +
       '<div class="sc">' + h.poinA + ' – ' + h.poinB + '</div>' +
-      '<div class="pl r">' + esc(m.b.nama) + '<small>Seed ' + esc(m.b.seed) + ' · ' + esc(m.b.klub) + '</small></div>' +
-      '<div class="info">' + (sis === 'SET' ? 'Sistem set · menang 6 poin' : 'Sistem kumulatif · 5 rambahan') + '</div>' +
+      '<div class="pl r">' + esc(m.b.nama) + '<small>' + lbl(m.b) + '</small></div>' +
+      '<div class="info">' + (tim ? (f.arrows === 6 ? 'Beregu · ' : 'Mix team · ') + f.arrows + ' anak panah per rambahan · ' : '') +
+        (sis === 'SET' ? 'Sistem set · menang ' + f.setWin + ' poin' : 'Sistem kumulatif · ' + f.ends + ' rambahan') + '</div>' +
       (h.pemenang ? '<div class="menang">🏆 Pemenang: ' + esc(h.pemenang === 'A' ? m.a.nama : m.b.nama) + '</div>' : '');
     var rows = '';
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < f.ends; i++) {
       var off = h.pemenang && !h.perluSO && i >= h.ends;
       var tri = function (side) {
         var arr = side === 'A' ? E.sa[i] : E.sb[i], s = '';
-        for (var k = 0; k < 3; k++) {
+        for (var k = 0; k < f.arrows; k++) {
           var c = { side: side, end: i, idx: k };
           s += '<div class="a ' + (arr[k] ? 'v-' + arr[k] : '') + (sama(cur, c) ? ' cur' : '') + '" data-s="' + side + '" data-e="' + i + '" data-k="' + k + '">' + (arr[k] || '') + '</div>';
         }
-        return '<div class="tri">' + s + '</div>';
+        return '<div class="tri' + (tim ? ' tim' : '') + '" style="grid-template-columns:repeat(' + (f.arrows === 4 ? 2 : 3) + ',1fr)">' + s + '</div>';
       };
       var ta = E.sa[i].filter(Boolean).length ? sum(E.sa[i]) : '', tb = E.sb[i].filter(Boolean).length ? sum(E.sb[i]) : '';
       var pt = h.pts[i] ? (sis === 'SET' ? h.pts[i][0] + '-' + h.pts[i][1] : '') : '';
@@ -160,10 +179,16 @@
     $('mEnds').innerHTML = rows;
     $('mSO').hidden = !h.perluSO;
     if (h.perluSO) {
-      var eq = E.soA && E.soB && val(E.soA) === val(E.soB);
-      $('mSO').innerHTML = '<b>Shoot-off</b> <span class="mut">1 anak panah, nilai tertinggi menang</span>' +
-        '<div class="row"><div>' + esc(m.a.nama) + '</div><div class="a ' + (E.soA ? 'v-' + E.soA : '') + (sama(cur, { so: 'A' }) ? ' cur' : '') + '" data-so="A">' + esc(E.soA) + '</div>' +
-        '<div class="a ' + (E.soB ? 'v-' + E.soB : '') + (sama(cur, { so: 'B' }) ? ' cur' : '') + '" data-so="B">' + esc(E.soB) + '</div><div style="text-align:right">' + esc(m.b.nama) + '</div></div>' +
+      var penuh = E.soA.filter(Boolean).length >= f.soN && E.soB.filter(Boolean).length >= f.soN;
+      var eq = penuh && sum(E.soA) === sum(E.soB);
+      var kotak = function (side) {
+        var arr = side === 'A' ? E.soA : E.soB, o = '';
+        for (var q = 0; q < f.soN; q++) o += '<div class="a ' + (arr[q] ? 'v-' + arr[q] : '') + (sama(cur, { so: side, idx: q }) ? ' cur' : '') + '" data-so="' + side + '" data-k="' + q + '">' + esc(arr[q] || '') + '</div>';
+        return '<div class="sob" style="display:grid;grid-template-columns:repeat(' + f.soN + ',1fr);gap:4px">' + o + '</div>';
+      };
+      $('mSO').innerHTML = '<b>Shoot-off</b> <span class="mut">' + (f.soN === 1 ? '1 anak panah, nilai tertinggi menang' : f.soN + ' anak panah (1 per anggota), jumlah tertinggi menang') + '</span>' +
+        '<div class="row" style="grid-template-columns:1fr ' + (f.soN * 46) + 'px ' + (f.soN * 46) + 'px 1fr"><div>' + esc(m.a.nama) + (f.soN > 1 && penuh ? ' <b>' + sum(E.soA) + '</b>' : '') + '</div>' + kotak('A') + kotak('B') +
+        '<div style="text-align:right">' + (f.soN > 1 && penuh ? '<b>' + sum(E.soB) + '</b> ' : '') + esc(m.b.nama) + '</div></div>' +
         (eq ? '<div class="mut" style="margin-top:8px">Nilai sama, siapa yang <b>paling dekat ke tengah</b>? (keputusan juri)</div><div class="dk">' +
           '<button data-c="A" class="' + (E.soC === 'A' ? 'on' : '') + '">' + esc(m.a.nama) + '</button><button data-c="B" class="' + (E.soC === 'B' ? 'on' : '') + '">' + esc(m.b.nama) + '</button></div>' : '');
     }
@@ -174,15 +199,15 @@
     E.cur = { side: b.dataset.s, end: Number(b.dataset.e), idx: Number(b.dataset.k) }; renderMatch();
   };
   $('mSO').onclick = function (e) {
-    var a = e.target.closest('[data-so]'); if (a) { E.cur = { so: a.dataset.so }; renderMatch(); return; }
+    var a = e.target.closest('[data-so]'); if (a) { E.cur = { so: a.dataset.so, idx: Number(a.dataset.k) || 0 }; renderMatch(); return; }
     var c = e.target.closest('[data-c]'); if (c) { E.soC = c.dataset.c; renderMatch(); }
   };
   $('mKeypad').onclick = function (e) {
     var b = e.target.closest('.key'); if (!b) return;
-    var h = hitung(E.sa, E.sb, E.soA, E.soB, E.soC, sistem());
+    var h = hitung(E.sa, E.sb, E.soA, E.soB, E.soC, sistem(), fmt());
     var c = E.cur || autoCur(h);
     if (!c) { toast('Pertandingan sudah selesai. Ketuk kotak untuk mengoreksi.'); return; }
-    if (c.so) { if (c.so === 'A') E.soA = b.dataset.k; else E.soB = b.dataset.k; E.soC = ''; }
+    if (c.so) { var sl = c.so === 'A' ? E.soA : E.soB; sl[c.idx || 0] = b.dataset.k; for (var q = 0; q < (c.idx || 0); q++) if (!sl[q]) sl[q] = ''; E.soC = ''; }
     else {
       var arr = c.side === 'A' ? E.sa[c.end] : E.sb[c.end];
       arr[c.idx] = b.dataset.k;
@@ -194,14 +219,15 @@
   $('mDel').onclick = function () {
     var c = E.cur;
     if (!c) {   // hapus nilai terakhir yang diisi
-      if (E.soB) E.soB = ''; else if (E.soA) E.soA = '';
+      var f = fmt(), hapusAkhir = function (arr) { for (var q = arr.length - 1; q >= 0; q--) if (arr[q]) { arr[q] = ''; return true; } return false; };
+      if (hapusAkhir(E.soB) || hapusAkhir(E.soA)) { /* nilai shoot-off terhapus */ }
       else {
-        outer: for (var i = 4; i >= 0; i--) for (var s = 1; s >= 0; s--) {
+        outer: for (var i = f.ends - 1; i >= 0; i--) for (var s = 1; s >= 0; s--) {
           var arr = s ? E.sb[i] : E.sa[i];
-          for (var k = 2; k >= 0; k--) if (arr[k]) { arr[k] = ''; break outer; }
+          for (var k = f.arrows - 1; k >= 0; k--) if (arr[k]) { arr[k] = ''; break outer; }
         }
       }
-    } else if (c.so) { if (c.so === 'A') E.soA = ''; else E.soB = ''; }
+    } else if (c.so) { (c.so === 'A' ? E.soA : E.soB)[c.idx || 0] = ''; }
     else (c.side === 'A' ? E.sa : E.sb)[c.end][c.idx] = '';
     E.soC = ''; E.cur = null; renderMatch();
   };
@@ -212,7 +238,7 @@
       return o;
     };
     var btn = $('mKirim'); btn.disabled = true; btn.textContent = 'Mengirim…';
-    post({ action: 'simpanMatch', matchId: E.m.id, skorA: bersih(E.sa), skorB: bersih(E.sb), soA: E.soA, soB: E.soB, soCloser: E.soC })
+    post({ action: 'simpanMatch', matchId: E.m.id, skorA: bersih(E.sa), skorB: bersih(E.sb), soA: E.soA.filter(Boolean).join(','), soB: E.soB.filter(Boolean).join(','), soCloser: E.soC })
       .then(function (j) {
         localStorage.removeItem('md_' + E.m.id);
         toast(j.pemenang ? 'Tersimpan ✓ Pemenang lanjut ke babak berikutnya' : 'Skor sementara tersimpan ✓');
